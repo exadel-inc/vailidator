@@ -133,20 +133,20 @@ function buildPrompt(params: AnalyzeParams): string {
       : params.markup
 
   return `
-You are an expert web accessibility and SEO auditor. You are given an HTML page and a list of plain-text validation rules. Produce a structured audit report as JSON.
+    You are an expert web accessibility and SEO auditor. You are given an HTML page and a list of plain-text validation rules. Produce a structured audit report as JSON.
 
-## HTML markup
-\`\`\`html
-${markup}
-\`\`\`
+    ## HTML markup
+    \`\`\`html
+    ${markup}
+    \`\`\`
 
-## Validation rules
-${params.rules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
+    ## Validation rules
+    ${params.rules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
 
-## Lighthouse findings (failed audits only)
-${JSON.stringify(params.lighthouseResult)}
+    ## Lighthouse findings (failed audits only)
+    ${JSON.stringify(params.lighthouseResult)}
 
-Evaluate each validation rule against the markup and the Lighthouse findings. Also convert the Lighthouse findings into audit items. Respond with ONLY a valid JSON object matching this exact schema:
-${JSON.stringify(AuditReportSchema, null, 2)}
-`.trim()
+    Evaluate each validation rule against the markup and the Lighthouse findings. Also convert the Lighthouse findings into audit items. Respond with ONLY a valid JSON object matching this exact schema:
+    ${JSON.stringify(AuditReportSchema, null, 2)}
+  `.trim()
 }
