@@ -81,17 +81,17 @@ Request:
 Example with `curl`:
 
 ```bash
-curl -X POST http://localhost:3000/audit \
-  -H 'Content-Type: application/json' \
-  --data-binary @- <<'JSON'
-{
-  "markup": "<!doctype html><html><head><title>Example</title></head><body><h1>Hello</h1></body></html>",
+curl --location 'http://localhost:3011/audit' \
+--header 'Content-Type: application/json' \
+--data '{
+  "markup": "<!doctype html><html><head><title>Example</title></head><body><h1>Hello</h1><p>Some content</p><h2>Subtitle</h2></body></html>",
   "rules": [
-    "Page must have a visible phone number",
-    "Page must have a clear call to action"
+    "Page must have a visible Hero banner with a headline and a call-to-action button",
+    "Page must display a visible phone number",
+    "Page must have a Privacy Policy link in the footer",
+    "Should have a valid heading structure (h1, h2, h3) and semantic HTML elements"
   ]
-}
-JSON
+}'
 ```
 
 The response has content type `text/html` and contains a complete validation report with:
