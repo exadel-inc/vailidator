@@ -1,4 +1,4 @@
-import type { AuditItem, AuditReport, ValidationRuleResult } from '../llm/client.js'
+import type { AuditItem, AuditReport, ValidationRuleResult } from '../types/audit-reports.types.js'
 
 interface Score {
   pass: number

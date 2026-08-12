@@ -1,8 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
-import { runLighthouse } from './lighthouse/runner.js'
-import { analyzeWithLLM } from './llm/client.js'
 import { generateHtmlReport } from './report/generator.js'
+import runAgent from './agent/auditor-agent.js'
 
 const app = express()
 app.use(express.json({ limit: '10mb' }))
@@ -11,28 +10,27 @@ app.post('/audit', async (req, res) => {
   const { markup, rules } = (req.body ?? {}) as { markup?: unknown; rules?: unknown }
 
   if (typeof markup !== 'string' || markup.length === 0) {
-    res.status(400).send('Bad request: "markup" must be a non-empty string')
+    res.status(400).send('Bad request: "markup" must be a non-empty string');
     return
   }
   if (!Array.isArray(rules) || rules.length === 0 || rules.some((rule) => typeof rule !== 'string')) {
-    res.status(400).send('Bad request: "rules" must be a non-empty array of strings')
+    res.status(400).send('Bad request: "rules" must be a non-empty array of strings');
     return
   }
-  const stringRules = rules as string[]
+
+  const stringRules = rules as string[];
 
   try {
     console.log(`[audit] Received request (${markup.length} bytes, ${stringRules.length} rules)`)
 
-    console.log('[audit] Running Lighthouse...')
-    const lighthouseResult = await runLighthouse(markup)
-    console.log('[audit] Lighthouse finished.')
-
     console.log('[audit] Analyzing with LLM...')
-    const report = await analyzeWithLLM({ markup, rules: stringRules, lighthouseResult })
-    console.log('[audit] LLM analysis finished.')
+    const prompt = `Validate the following HTML markup with the provided validation rules:\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${rules?.join('\n')}\n</validation_rules>`;
+
+    const agentResponse = await runAgent(prompt);
+    console.log('[audit] LLM analysis finished.');
 
     console.log('[audit] Generating HTML report...')
-    const html = generateHtmlReport(report)
+    const html = generateHtmlReport(agentResponse);
 
     console.log('[audit] Done.')
     res.type('html').send(html)
@@ -51,6 +49,19 @@ app.post('/audit', async (req, res) => {
     )
   }
 })
+
+app.post('/agent', async (req, res) => {
+  try {
+    const markup = req.body.markup as string | undefined;
+    const rules = req.body.rules as string[] | undefined;
+    const prompt = `Validate the following HTML markup with the provided validation rules:\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${rules?.join('\n')}\n</validation_rules>`;
+    const response = await runAgent(prompt);
+    res.json(response);
+  } catch (err) {
+    console.error('Auditor agent failed:', err)
+    res.status(500).json({ message: 'Auditor agent failed', error: (err as Error).message });
+  }
+});
 
 const port = Number(process.env.PORT ?? 3000)
 app.listen(port, () => {

@@ -2,29 +2,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import http from 'node:http'
-import type { AddressInfo } from 'node:net'
 import puppeteer, { type Browser } from 'puppeteer'
 import lighthouse from 'lighthouse'
 import serveStatic from 'serve-static'
 
-export interface AuditEntry {
-  id: string
-  title: string
-  description: string
-  score: number | null
-  displayValue?: string
-}
-
-export interface LighthouseResult {
-  seo: {
-    score: number
-    audits: AuditEntry[]
-  }
-  accessibility: {
-    score: number
-    audits: AuditEntry[]
-  }
-}
+import type { AddressInfo } from 'node:net'
+import type { LighthouseAuditEntry, LighthouseResult } from '../../types/lighthouse.types.js'
 
 export interface ServedPage {
   url: string
@@ -77,7 +60,7 @@ export async function runLighthouse(markup: string): Promise<LighthouseResult> {
   let browser: Browser | undefined
 
   try {
-    console.log('Launching headless Chrome...')
+    console.log('[lighthouse] Launching headless Chrome...')
     browser = await puppeteer.launch({
       args: ['--no-sandbox', '--disable-dev-shm-usage'],
     })
@@ -92,13 +75,13 @@ export async function runLighthouse(markup: string): Promise<LighthouseResult> {
       extends: 'lighthouse:default',
     }
 
-    console.log('Running Lighthouse...')
+    console.log('[lighthouse] Running Lighthouse...')
     const result = await lighthouse(served.url, flags, config)
     if (!result) {
       throw new Error('Lighthouse returned no result')
     }
     const { lhr } = result
-    console.log('Lighthouse finished.')
+    console.log('[lighthouse] Lighthouse finished.')
 
     const report = {
       seo: buildCategory(lhr, 'seo'),
@@ -123,12 +106,12 @@ export async function runLighthouse(markup: string): Promise<LighthouseResult> {
   }
 }
 
-function buildCategory(lhr: any, category: 'seo' | 'accessibility'): { score: number; audits: AuditEntry[] } {
+function buildCategory(lhr: any, category: 'seo' | 'accessibility'): { score: number; audits: LighthouseAuditEntry[] } {
   const categoryData = lhr?.categories?.[category]
   const score = categoryData ? Math.round((categoryData.score ?? 0) * 100) : 0
   const auditRefs: { id: string }[] = categoryData?.auditRefs ?? []
 
-  const audits: AuditEntry[] = []
+  const audits: LighthouseAuditEntry[] = []
   for (const ref of auditRefs) {
     const audit = lhr?.audits?.[ref.id]
     if (!audit) continue
