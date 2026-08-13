@@ -1,9 +1,9 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { ToolLoopAgent, isStepCount } from 'ai';
-import { lighthouseAuditTool } from '../tools/lighthouse/lighthouse-tool.js';
-import { linksCheckerTool } from '../tools/links-checker/links-checker-tool.js';
-import { AuditReport, auditReportZodSchema } from './audit-report-zod-schema.js';
-import SYSTEM_PROMPT from './system-prompt.js';
+import { AuditReport, auditReportZodSchema } from '../audit-report-zod-schema.js';
+import { parseLlmOutput } from '../../helpers/response-parser.js';
+import { vercelLighthouseAuditTool, vercelLinksCheckerTool } from './vercel-tools.js';
+import SYSTEM_PROMPT from '../system-prompt.js';
 
 const provider = createOpenAI({
   baseURL: process.env.LLM_BASE_URL ?? 'http://localhost:1234/v1',
@@ -13,10 +13,9 @@ const provider = createOpenAI({
 const auditorAgent = new ToolLoopAgent({
   model: provider.chat(process.env.LLM_MODEL ?? 'your-model-id'),
   instructions: SYSTEM_PROMPT,
-  // output: Output.json(),
   tools: {
-    lighthouseAuditTool,
-    linksCheckerTool,
+    vercelLighthouseAuditTool,
+    vercelLinksCheckerTool,
   },
   stopWhen: isStepCount(10),
 });
@@ -26,7 +25,7 @@ const runAgent = async (prompt: string): Promise<AuditReport> => {
     prompt: prompt,
   });
 
-  let rawOutput: string;
+  let rawOutput: unknown;
   try {
     rawOutput = JSON.parse(result.output);
   } catch (error) {
@@ -36,7 +35,7 @@ const runAgent = async (prompt: string): Promise<AuditReport> => {
     );
   }
 
-  return auditReportZodSchema.parse(rawOutput);
+  return parseLlmOutput(auditReportZodSchema, rawOutput);
 };
 
 

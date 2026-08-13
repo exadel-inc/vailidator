@@ -28,7 +28,8 @@ export default tseslint.config(
   {
     files: ['src/**/*.ts'],
     rules: {
-      'preserve-caught-error': 'off'
+      'preserve-caught-error': 'off',
+      'no-unused-vars': 'off'
     }
   }
 )

@@ -1,11 +1,14 @@
-import runAgent from './auditor-agent.js';
-import runClaude from './auditor-claude.js';
+import runVercel from './vercel/auditor-vercel.js';
+import runClaude from './claude/auditor-claude.js';
+import runCopilot from './copilot/auditor-copilot.js';
+import { AuditReport } from './audit-report-zod-schema.js';
 
-export type Auditor = typeof runAgent;
+export type Auditor = (prompt: string) => Promise<AuditReport>;
 
 const AUDITORS: Record<string, Auditor> = {
-  native: runAgent,
+  vercel: runVercel,
   claude: runClaude,
+  copilot: runCopilot,
 };
 
 export const AUDITOR_NAMES: readonly string[] = Object.keys(AUDITORS);
@@ -18,6 +21,7 @@ export function getAuditorName(): string {
 
 export function getAuditor(): Auditor {
   const selected = getAuditorName().toLowerCase();
+  console.log(`[auditor] Selected auditor: ${selected}`);
   const auditor = AUDITORS[selected];
   if (!auditor) {
     throw new Error(

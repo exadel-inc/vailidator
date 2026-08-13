@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
 import { generateHtmlReport } from './report/generator.js'
-import { getAuditor, getAuditorName } from './agent/index.js'
+import { getAuditor, getAuditorName } from './agents/index.js'
 
 const app = express()
 app.use(express.json({ limit: '10mb' }))
