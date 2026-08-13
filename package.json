@@ -12,11 +12,11 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.40",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.231",
     "ai": "^7.0.62",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "lighthouse": "^12.2.1",
-    "openai": "^4.67.3",
     "puppeteer": "^25.6.0",
     "serve-static": "^1.16.2",
     "zod": "^4.4.3"

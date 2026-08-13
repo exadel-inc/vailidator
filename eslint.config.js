@@ -24,5 +24,11 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname
       }
     }
+  },
+  {
+    files: ['src/**/*.ts'],
+    rules: {
+      'preserve-caught-error': 'off'
+    }
   }
 )

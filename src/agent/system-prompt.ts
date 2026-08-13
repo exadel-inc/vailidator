@@ -40,6 +40,7 @@ const SYSTEM_PROMPT = `
 
   Every array must be present (use empty arrays if nothing applies). Every field is required - do not omit fields.
   Output only the JSON object and nothing else.
+  Never include any additional text, explanations, or comments. Do not include any markdown formatting or code fences. The output must be valid JSON.
 `;
 
 export default SYSTEM_PROMPT;

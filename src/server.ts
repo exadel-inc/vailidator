@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
 import { generateHtmlReport } from './report/generator.js'
-import runAgent from './agent/auditor-agent.js'
+import { getAuditor, getAuditorName } from './agent/index.js'
 
 const app = express()
 app.use(express.json({ limit: '10mb' }))
@@ -22,11 +22,13 @@ app.post('/audit', async (req, res) => {
 
   try {
     console.log(`[audit] Received request (${markup.length} bytes, ${stringRules.length} rules)`)
+    console.log(`[audit] Auditor: ${getAuditorName()}`)
 
     console.log('[audit] Analyzing with LLM...')
-    const prompt = `Validate the following HTML markup with the provided validation rules:\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${rules?.join('\n')}\n</validation_rules>`;
+    const prompt = `Validate the following HTML markup with the provided validation rules:\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${stringRules.join('\n')}\n</validation_rules>`;
 
-    const agentResponse = await runAgent(prompt);
+    const runAuditor = getAuditor();
+    const agentResponse = await runAuditor(prompt);
     console.log('[audit] LLM analysis finished.');
 
     console.log('[audit] Generating HTML report...')
@@ -55,7 +57,7 @@ app.post('/agent', async (req, res) => {
     const markup = req.body.markup as string | undefined;
     const rules = req.body.rules as string[] | undefined;
     const prompt = `Validate the following HTML markup with the provided validation rules:\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${rules?.join('\n')}\n</validation_rules>`;
-    const response = await runAgent(prompt);
+    const response = await getAuditor()(prompt);
     res.json(response);
   } catch (err) {
     console.error('Auditor agent failed:', err)

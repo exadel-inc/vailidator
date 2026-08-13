@@ -1,5 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { ToolLoopAgent, Output, isStepCount } from 'ai';
+import { ToolLoopAgent, isStepCount } from 'ai';
 import { lighthouseAuditTool } from '../tools/lighthouse/lighthouse-tool.js';
 import { linksCheckerTool } from '../tools/links-checker/links-checker-tool.js';
 import { AuditReport, auditReportZodSchema } from './audit-report-zod-schema.js';
