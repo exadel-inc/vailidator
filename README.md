@@ -4,15 +4,17 @@ An HTTP server that audits submitted HTML for SEO, accessibility, and custom val
 
 The server supports three interchangeable auditors, selected with the `AUDITOR` environment variable:
 - `claude` (default) — Claude Agent SDK, runs the locally installed `claude` CLI.
-- `native` — AI SDK `ToolLoopAgent` over any OpenAI-compatible endpoint (LM Studio / Ollama / llama.cpp / cloud).
+- `vercel` — AI SDK `ToolLoopAgent` over any OpenAI-compatible endpoint (LM Studio / Ollama / llama.cpp / cloud).
 - `copilot` — GitHub Copilot SDK, drives the locally installed Copilot CLI.
+
+The repository also contains a browser client for injecting an audit button into an AEM preview page. Its TypeScript source is bundled with Webpack into `src/client/dist/loader.js` and served by the server at `/ui-assets/loader.js`.
 
 ## Requirements
 
 - Node.js 20 or newer
 - npm
 - A Chromium-compatible browser environment for Puppeteer
-- For the `native` auditor: an OpenAI-compatible chat completions endpoint (LM Studio, Ollama, llama.cpp, or a hosted provider)
+- For the `vercel` auditor: an OpenAI-compatible chat completions endpoint (LM Studio, Ollama, llama.cpp, or a hosted provider)
 - For the `claude` auditor: the `claude` CLI installed and authenticated (via `ANTHROPIC_API_KEY` or `claude login`)
 - For the `copilot` auditor: the `copilot` CLI installed and authenticated (via `GITHUB_TOKEN` or `copilot login`)
 
@@ -122,6 +124,14 @@ Each agent CLI must be logged in before it can be used:
 
 ## API
 
+### `GET /ui-assets/:asset`
+
+Serves a compiled browser client asset from `src/client/dist`. For example:
+
+```text
+http://localhost:3000/ui-assets/loader.js
+```
+
 ### `POST /audit`
 
 Submit an HTML document and one or more plain-text validation rules as JSON.
@@ -171,7 +181,7 @@ The request body must contain a non-empty string `markup` and a non-empty array 
 
 ```text
 src/
-  server.ts                      Express server, POST /audit + POST /agent endpoints
+  server.ts                      Express server, static files, POST /audit + POST /agent endpoints
   agents/
     index.ts                     Auditor factory keyed on the AUDITOR env var
     audit-report-zod-schema.ts   Zod schema + AuditReport type for LLM output
@@ -191,10 +201,37 @@ src/
     lighthouse/lighthouse-runner.ts   Temporary HTML server and Lighthouse runner
     links-checker/links-checker.ts    Link checker implementation
   report/generator.ts           Self-contained HTML report generator
+  client/
+    loader.ts                   Browser script for the AEM audit button
+    components/                 Client-side UI components
+    helpers/                    Client-side helpers
+    dist/                       Webpack output; served at /ui-assets
+  middleware/
+    access-control-headers.ts   CORS and OPTIONS response middleware
   types/                        Shared TypeScript interfaces
+public/                         Root static files
+webpack.config.cjs              Browser client Webpack configuration
 eslint.config.js                 ESLint flat configuration
 .env.example                     Example environment configuration
 ```
+
+## Client development
+
+Build the browser client once with:
+
+```bash
+npm run build:client
+```
+
+During `npm run dev`, Webpack watches `src/client` and rebuilds `src/client/dist/loader.js` whenever client sources change. Nodemon separately watches server TypeScript sources and restarts the server when they change.
+
+To run only the client watcher:
+
+```bash
+npm run dev:client
+```
+
+Edit files under `src/client`, not the generated JavaScript in `src/client/dist`.
 
 ## Troubleshooting
 

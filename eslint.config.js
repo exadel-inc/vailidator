@@ -4,7 +4,13 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'reports/**']
+    ignores: ['dist/**', 'dist-ui/**', 'node_modules/**', 'reports/**', 'public/**', 'src/client/**/*.js']
+  },
+  {
+    files: ['webpack.config.cjs'],
+    languageOptions: {
+      globals: globals.node
+    }
   },
   eslint.configs.recommended,
   {
@@ -18,7 +24,10 @@ export default tseslint.config(
   {
     files: ['src/**/*.ts'],
     languageOptions: {
-      globals: globals.node,
+      globals: {
+        ...globals.node,
+        ...globals.browser
+      },
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname

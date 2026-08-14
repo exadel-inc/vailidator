@@ -1,0 +1,131 @@
+﻿diff --git a/public/loader.js b/public/loader.js
+new file mode 100644
+index 0000000..7863d98
+--- /dev/null
++++ b/public/loader.js
+@@ -0,0 +1,91 @@
++(function() {
++  // ╨ù╨░╤ë╨╕╤é╨░ ╨╛╤é ╨┤╨▓╨╛╨╣╨╜╨╛╨│╨╛ ╨╖╨░╨┐╤â╤ü╨║╨░
++  if (document.getElementById('aem-audit-btn')) return;
++
++  // ╨¥╨░╨╣╤é╨╕ iframe ╤ü ╨┐╤Ç╨╡╨▓╤î╤Ä ╤ü╤é╤Ç╨░╨╜╨╕╤å╤ï (╤ü╨╡╨╗╨╡╨║╤é╨╛╤Ç ╨╜╤â╨╢╨╜╨╛ ╤â╤é╨╛╤ç╨╜╨╕╤é╤î ╨┐╨╛╨┤ ╨║╨╛╨╜╨║╤Ç╨╡╤é╨╜╤ï╨╣ AEM)
++  function getMarkup() {
++    const iframe =
++      document.querySelector('iframe#ContentFrame') ||      // AEM Classic
++      document.querySelector('iframe.cq-Overlay-element') || // AEM Touch UI
++      document.querySelector('iframe[name="CQ"]');
++
++    if (!iframe) {
++      alert('AEM preview iframe not found. Check selector.');
++      return null;
++    }
++
++    try {
++      return iframe.contentDocument.documentElement.outerHTML;
++    } catch (e) {
++      alert('Cannot access iframe content. Possible cross-origin restriction.');
++      return null;
++    }
++  }
++
++  // ╨ù╨░╨┐╤Ç╨╛╤ü╨╕╤é╤î ╨┐╤Ç╨░╨▓╨╕╨╗╨░ ╨▓╨░╨╗╨╕╨┤╨░╤å╨╕╨╕
++  function getRules() {
++    const input = prompt(
++      'Enter validation rules (one per line):',
++      'Page must have a Hero banner\nPage must have a phone number'
++    );
++    if (!input) return null;
++    return input.split('\n').map(r => r.trim()).filter(Boolean);
++  }
++
++  // ╨¥╨░╤Ç╨╕╤ü╨╛╨▓╨░╤é╤î ╨║╨╜╨╛╨┐╨║╤â
++  const btn = document.createElement('button');
++  btn.id = 'aem-audit-btn';
++  btn.textContent = '≡ƒöì Audit Page';
++  btn.style.cssText = `
++    position: fixed;
++    top: 60px;
++    right: 20px;
++    z-index: 999999;
++    background: #1473e6;
++    color: white;
++    border: none;
++    border-radius: 4px;
++    padding: 10px 16px;
++    font-size: 14px;
++    font-family: sans-serif;
++    cursor: pointer;
++    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
++  `;
++
++  btn.addEventListener('click', async () => {
++    const markup = getMarkup();
++    if (!markup) return;
++
++    const rules = getRules();
++    if (!rules) return;
++
++    btn.textContent = 'ΓÅ│ Auditing...';
++    btn.disabled = true;
++
++    try {
++      const response = await fetch('http://localhost:3011/audit', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ markup, rules }),
++      });
++
++      if (!response.ok) throw new Error(`Server error: ${response.status}`);
++
++      const html = await response.text();
++
++      // ╨₧╤é╨║╤Ç╤ï╤é╤î ╨╛╤é╤ç╤æ╤é ╨▓ ╨╜╨╛╨▓╨╛╨╣ ╨▓╨║╨╗╨░╨┤╨║╨╡
++      const tab = window.open('', '_blank');
++      tab.document.write(html);
++      tab.document.close();
++
++    } catch (err) {
++      alert(`Audit failed: ${err.message}`);
++    } finally {
++      btn.textContent = '≡ƒöì Audit Page';
++      btn.disabled = false;
++    }
++  });
++
++  document.body.appendChild(btn);
++  console.log('[AEM Audit] Button injected.');
++})();
+diff --git a/src/middleware/access-control-headers.ts b/src/middleware/access-control-headers.ts
+new file mode 100644
+index 0000000..2723dc1
+--- /dev/null
++++ b/src/middleware/access-control-headers.ts
+@@ -0,0 +1,9 @@
++import { Request, Response, NextFunction } from 'express';
++
++export const accessControlHeadersMiddleware = (req: Request, res: Response, next: NextFunction) => {
++  res.setHeader("Access-Control-Allow-Origin", "*");
++  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
++  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
++  if (req.method === "OPTIONS") return res.sendStatus(200);
++  next();
++}
+diff --git a/src/server.ts b/src/server.ts
+index 17ff355..652afe0 100644
+--- a/src/server.ts
++++ b/src/server.ts
+@@ -1,10 +1,14 @@
+ import 'dotenv/config'
+ import express from 'express'
++import { accessControlHeadersMiddleware } from './middleware/access-control-headers.js';
+ import { generateHtmlReport } from './report/generator.js'
+ import { getAuditor, getAuditorName } from './agents/index.js'
++import path from "path";
+ 
+ const app = express()
+ app.use(express.json({ limit: '10mb' }))
++app.use(express.static(path.join(__dirname, "../public")));
++app.use(accessControlHeadersMiddleware);
+ 
+ app.post('/audit', async (req, res) => {
+   const { markup, rules } = (req.body ?? {}) as { markup?: unknown; rules?: unknown }
