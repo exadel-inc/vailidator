@@ -18,8 +18,12 @@ const runClaude = async (prompt: string): Promise<AuditReport> => {
   const stream = query({
     prompt,
     options: {
-      permissionMode: 'bypassPermissions', // auto-approves MCP tool calls too
-      allowDangerouslySkipPermissions: true,
+      tools: [],
+      allowedTools: [
+        `mcp__${auditTools.name}__${claudeLighthouseAuditTool.name}`,
+        `mcp__${auditTools.name}__${claudeLinksCheckerTool.name}`,
+      ],
+      permissionMode: "dontAsk", // Deny everything not approved instead of ask
       maxTurns: 10,
       systemPrompt: SYSTEM_PROMPT,
       mcpServers: {

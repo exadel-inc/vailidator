@@ -5,8 +5,8 @@
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "npm run build && (npm run dev:client & nodemon --watch src --ext ts --exec \"node --loader ts-node/esm src/server.ts\"; kill 0)",
-    "build": "tsc && npm run build:client && npm run lint",
+    "dev": "npm run build && nodemon --watch src --ext ts --exec \"node --loader ts-node/esm src/server.ts\"",
+    "build": "tsc && npm run lint",
     "lint": "eslint .",
     "start": "node dist/server.js",
     "build:client": "webpack --config webpack.config.cjs",

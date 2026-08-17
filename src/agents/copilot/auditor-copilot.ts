@@ -1,10 +1,8 @@
-
+import { CopilotClient, approveAll, ToolSet } from "@github/copilot-sdk";
+import { copilotLighthouseAudit, copilotCheckLinks } from './copilot-tools.js';
 import { auditReportZodSchema, AuditReport } from '../audit-report-zod-schema.js';
 import { parseLlmOutput } from '../../helpers/response-parser.js';
 import SYSTEM_PROMPT from '../system-prompt.js';
-import { CopilotClient, approveAll } from "@github/copilot-sdk";
-import { copilotLighthouseAudit, copilotCheckLinks } from './copilot-tools.js';
-
 
 const runCopilot = async (prompt: string): Promise<AuditReport> => {
   const client = new CopilotClient({
@@ -19,9 +17,9 @@ const runCopilot = async (prompt: string): Promise<AuditReport> => {
       },
       onPermissionRequest: approveAll,
       tools: [copilotLighthouseAudit, copilotCheckLinks],
+      availableTools: new ToolSet().addCustom("*")
     });
 
-    console.log('[auditor-copilot] Sending prompt to Copilot');
     const response = await session.sendAndWait({ prompt }, 5 * 60 * 1000);
 
     if (!response) {
