@@ -16,7 +16,7 @@ app.use('/ui-assets', express.static(path.join(__dirname, '../dist-ui')));
 app.use(accessControlHeadersMiddleware);
 
 app.post('/audit', async (req, res) => {
-  const { markup, rules } = (req.body ?? {}) as { markup?: unknown; rules?: unknown }
+  const { markup, rules, pageUrl } = (req.body ?? {}) as { markup?: string; rules?: string[]; pageUrl?: string };
 
   if (typeof markup !== 'string' || markup.length === 0) {
     res.status(400).send('Bad request: "markup" must be a non-empty string');
@@ -26,6 +26,14 @@ app.post('/audit', async (req, res) => {
     res.status(400).send('Bad request: "rules" must be a non-empty array of strings');
     return
   }
+  if (typeof pageUrl !== 'string' || pageUrl.length === 0) {
+    res.status(400).send('Bad request: "pageUrl" must be a non-empty string');
+    return
+  }
+
+  console.log(`[audit] Received request for page: ${pageUrl}`)
+  console.log(`[audit] Markup length: ${markup.length} bytes`)
+  console.log(`[audit] Received ${rules.length} rules`)
 
   const stringRules = rules as string[];
 
@@ -34,7 +42,7 @@ app.post('/audit', async (req, res) => {
     console.log(`[audit] Auditor: ${getAuditorName()}`)
 
     console.log('[audit] Analyzing with LLM...')
-    const prompt = `Validate the following HTML markup with the provided validation rules:\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${stringRules.join('\n')}\n</validation_rules>`;
+    const prompt = `Validate the following HTML markup with the provided validation rules. Take into account that page url: <page_url>${pageUrl}</page_url>\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${stringRules.join('\n')}\n</validation_rules>`;
 
     const runAuditor = getAuditor();
     const agentResponse = await runAuditor(prompt);

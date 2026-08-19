@@ -15,13 +15,14 @@ export const vercelLighthouseAuditTool = tool({
 });
 
 export const vercelLinksCheckerTool = tool({
-  description: 'Run a link checker against a list of links urls. Use this when the user asks to check links, validate links, or verify links.',
+  description: 'Run a link checker against a list of links urls, resolving relative links against the original page URL. Use this when the user asks to check links, validate links, or verify links.',
   inputSchema: z.object({
     links: z.array(z.string()),
+    originalUrl: z.string().optional(),
   }),
-  execute: async ({ links }) => {
+  execute: async ({ links, originalUrl }) => {
     console.log('[agent] Running links checker tool...');
-    return await linksChecker(links);
+    return await linksChecker(links, originalUrl);
   }
 });
   

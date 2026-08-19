@@ -1,12 +1,33 @@
 const AUDIT_PORT = 3011;
 const AUDIT_URL = `http://localhost:${AUDIT_PORT}/audit`;
 
-// Grab the rendered HTML markup from the AEM preview iframe.
-export function getMarkup(): string | null {
+
+export function getIframe(): HTMLIFrameElement | null {
   const iframe: HTMLIFrameElement | null =
     document.querySelector('iframe#ContentFrame') ||      // AEM Classic
     document.querySelector('iframe.cq-Overlay-element') || // AEM Touch UI
     document.querySelector('iframe[name="CQ"]');
+  return iframe;
+}
+
+export function getIframeUrl(): string | null {
+  const iframe = getIframe();
+  if (!iframe) {
+    alert('AEM preview iframe not found. Check selector.');
+    return null;
+  } 
+
+  try {
+    return iframe.contentWindow?.location.href ?? null;
+  } catch {
+    alert('Cannot access iframe content. Possible cross-origin restriction.');
+    return null;
+  }
+}
+
+// Grab the rendered HTML markup from the AEM preview iframe.
+export function getMarkup(): string | null {
+  const iframe = getIframe();
 
   if (!iframe) {
     alert('AEM preview iframe not found. Check selector.');
@@ -22,11 +43,11 @@ export function getMarkup(): string | null {
 }
 
 // POST the markup + rules to the audit service and return the rendered report HTML.
-export async function runAudit(markup: string, rules: string[]): Promise<string> {
+export async function runAudit(markup: string, rules: string[], pageUrl: string): Promise<string> {
   const response = await fetch(AUDIT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ markup, rules }),
+    body: JSON.stringify({ markup, rules, pageUrl }),
   });
 
   if (!response.ok) {

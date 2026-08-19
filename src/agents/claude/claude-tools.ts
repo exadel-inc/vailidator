@@ -14,13 +14,13 @@ export const claudeLighthouseAuditTool: SdkMcpToolDefinition<{ markup: z.ZodStri
   }
 };
 
-export const claudeLinksCheckerTool: SdkMcpToolDefinition<{ links: z.ZodArray<z.ZodString> }> = {
+export const claudeLinksCheckerTool: SdkMcpToolDefinition<{ links: z.ZodArray<z.ZodString>, originalUrl: z.ZodOptional<z.ZodString> }> = {
   name: 'check_links',
   description:
-    'Run a link checker against a list of link URLs. Returns JSON with HTTP status per URL.',
-  inputSchema: { links: z.array(z.string()) },
-  handler: async ({ links }) => {
-    const result = await linksChecker(links);
+    'Run a link checker against a list of link URLs, resolving relative links against the original page URL. Returns JSON with HTTP status per URL.',
+  inputSchema: { links: z.array(z.string()), originalUrl: z.string().optional() },
+  handler: async ({ links, originalUrl }) => {
+    const result = await linksChecker(links, originalUrl);
     return { content: [{ type: 'text', text: JSON.stringify(result) }] };
   }
 };

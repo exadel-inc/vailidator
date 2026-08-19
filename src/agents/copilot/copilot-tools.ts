@@ -17,12 +17,12 @@ export const copilotLighthouseAudit = defineTool("lighthouse_audit", {
 
 export const copilotCheckLinks = defineTool("check_links", {
   description:
-    'Run a link checker against a list of link URLs. Returns JSON with HTTP status per URL.',
-  parameters: z.object({ links: z.array(z.string()) }),
+    'Run a link checker against a list of link URLs, resolving relative links against the original page URL. Returns JSON with HTTP status per URL.',
+  parameters: z.object({ links: z.array(z.string()), originalUrl: z.string().optional() }),
   skipPermission: true,
   defer: "never",
-  handler: async ({ links }) => {
-    const result = await linksChecker(links);
+  handler: async ({ links, originalUrl }) => {
+    const result = await linksChecker(links, originalUrl);
     return JSON.stringify(result);
   },
 });

@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 import { Dropdown } from './Dropdown';
 import { SettingsModal } from './SettingsModal';
-import { getMarkup, openReportInTab, runAudit } from '../services/audit';
+import { getIframeUrl, getMarkup, openReportInTab, runAudit } from '../services/audit';
 import { loadRules } from '../services/storage';
 
 export function App() {
@@ -13,6 +13,8 @@ export function App() {
     setDropdownOpen(false);
     if (auditing) return;
 
+    const pageUrl = getIframeUrl();
+    if (!pageUrl) return;
     const markup = getMarkup();
     if (!markup) return;
 
@@ -31,7 +33,7 @@ export function App() {
     setAuditing(true);
     try {
       console.log('[AEM Audit] Running audit...');
-      const html = await runAudit(markup, rules);
+      const html = await runAudit(markup, rules, pageUrl);
       openReportInTab(html);
       console.log('[AEM Audit] Report opened in new tab.');
     } catch (err) {
