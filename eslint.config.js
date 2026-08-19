@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'dist-ui/**', 'node_modules/**', 'reports/**', 'public/**', 'src/client/**/*.js']
+    ignores: ['dist/**', 'dist-ui/**', 'node_modules/**', 'reports/**', 'public/**', 'src/client/**/*.js', 'src/client/**/*.tsx']
   },
   {
     files: ['webpack.config.cjs'],

@@ -9,21 +9,32 @@ module.exports = {
     clean: false,
   },
   resolve: {
-    extensions: ['.ts', '.js'],
+    extensions: ['.ts', '.tsx', '.js'],
   },
   module: {
     rules: [
       {
-        test: /\.ts$/,
+        test: /\.tsx?$/,
         exclude: /node_modules/,
         use: {
           loader: 'ts-loader',
           options: {
+            configFile: path.resolve(__dirname, 'src/client/tsconfig.json'),
             compilerOptions: {
               noEmit: false,
             },
           },
         },
+      },
+      {
+        test: /\.less$/,
+        use: [
+          {
+            loader: 'css-loader',
+            options: { exportType: 'string' },
+          },
+          'less-loader',
+        ],
       },
     ],
   },
