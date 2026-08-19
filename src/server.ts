@@ -31,9 +31,9 @@ app.post('/audit', async (req, res) => {
     return
   }
 
-  console.log(`[audit] Received request for page: ${pageUrl}`)
+  console.log(`\n[audit] Received request for page: ${pageUrl}`)
   console.log(`[audit] Markup length: ${markup.length} bytes`)
-  console.log(`[audit] Received ${rules.length} rules`)
+  console.log(`[audit] Received ${rules.length} rules\n`)
 
   const stringRules = rules as string[];
 

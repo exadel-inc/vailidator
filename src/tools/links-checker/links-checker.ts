@@ -1,20 +1,20 @@
 import type { LinksCheckerReport } from '../../types/links-checker.types.js'
 
 export async function pingUrl(url: string): Promise<boolean> {
-  console.log(`[agent] Pinging URL: ${url}`);
+  console.log(`[linksChecker] Pinging URL: ${url}`);
   try {
     const response = await fetch(url);
-    console.log(`[agent] URL: ${url} responded with status: ${response.status}`);
+    console.log(`[linksChecker] URL: ${url} responded with status: ${response.status}`);
     return response.ok;
   } catch (error) {
-    console.log(`[agent] URL: ${url} failed with error: ${error}`);
+    console.log(`[linksChecker] URL: ${url} failed with error: ${error}`);
     return false;
   }
 }
 
 // Check each link, resolving relative links against the original page URL when provided.
 export async function linksChecker(links: string[], originalUrl?: string): Promise<LinksCheckerReport> {
-  console.log('[agent] Running links checker...')
+  console.log('[linksChecker] Running links checker...')
   const report: LinksCheckerReport = []
 
   const checkPromises = links.map(async (link) => {
@@ -27,7 +27,7 @@ export async function linksChecker(links: string[], originalUrl?: string): Promi
 
   await Promise.all(checkPromises);
 
-  console.log('[agent] Links checker finished.')
+  console.log('[linksChecker] Links checker finished.')
 
   return report;
 }

@@ -21,15 +21,27 @@ const auditorAgent = new ToolLoopAgent({
 });
 
 const runAgent = async (prompt: string): Promise<AuditReport> => {
-  const result = await auditorAgent.generate({
+  const result = await auditorAgent.stream({
     prompt: prompt,
   });
 
+  // Stream the agent's text output to the node console as it is generated.
+  let streamedChars = 0;
+  for await (const delta of result.textStream) {
+    process.stdout.write(delta);
+    streamedChars += delta.length;
+  }
+  if (streamedChars > 0) {
+    process.stdout.write('\n');
+  }
+
+  const finalText = await result.text;
+
   let rawOutput: unknown;
   try {
-    rawOutput = JSON.parse(result.output);
+    rawOutput = JSON.parse(finalText);
   } catch (error) {
-    console.error('Agent returned non-JSON output:', result.output);
+    console.error('Agent returned non-JSON output:', finalText);
     throw new Error(
       `Agent returned non-JSON output: ${error instanceof Error ? error.message : String(error)}`
     );

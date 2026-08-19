@@ -29,12 +29,23 @@ const runClaude = async (prompt: string): Promise<AuditReport> => {
       mcpServers: {
         [auditTools.name]: auditTools,
       },
+      includePartialMessages: true,
     },
   });
 
   let finalText: string | undefined;
+  let streamedChars = 0;
 
   for await (const message of stream) {
+    // Stream assistant text deltas to the node console as they are generated.
+    if (message.type === 'stream_event' && message.event.type === 'content_block_delta') {
+      const delta = message.event.delta;
+      if (delta.type === 'text_delta') {
+        process.stdout.write(delta.text);
+        streamedChars += delta.text.length;
+      }
+    }
+
     if (message.type === 'result') {
       if (message.subtype === 'success') {
         finalText = message.result;
@@ -44,6 +55,11 @@ const runClaude = async (prompt: string): Promise<AuditReport> => {
         );
       }
     }
+  }
+
+  // Terminate the streamed line.
+  if (streamedChars > 0) {
+    process.stdout.write('\n');
   }
 
   if (finalText === undefined) {

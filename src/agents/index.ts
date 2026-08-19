@@ -21,7 +21,7 @@ export function getAuditorName(): string {
 
 export function getAuditor(): Auditor {
   const selected = getAuditorName().toLowerCase();
-  console.log(`[auditor] Selected auditor: ${selected}`);
+  console.log(`[audit] Selected auditor: ${selected}`);
   const auditor = AUDITORS[selected];
   if (!auditor) {
     throw new Error(

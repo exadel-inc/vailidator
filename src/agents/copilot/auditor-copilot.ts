@@ -9,8 +9,7 @@ const runCopilot = async (prompt: string): Promise<AuditReport> => {
     gitHubToken: process.env.GITHUB_TOKEN || undefined,
   });
 
-  try {
-    const session = await client.createSession({
+  const session = await client.createSession({
       model: "auto",
       systemMessage: {  
         content: SYSTEM_PROMPT,
@@ -20,6 +19,15 @@ const runCopilot = async (prompt: string): Promise<AuditReport> => {
       availableTools: new ToolSet().addCustom("*")
     });
 
+    const messageDeltaUnsubscribe = session.on("assistant.message_delta", (event) => {
+      process.stdout.write(event.data.deltaContent);
+    });
+
+    const idleUnsubscribe = session.on("assistant.idle", (event) => {
+      console.log('\n');
+    });
+
+  try {
     const response = await session.sendAndWait({ prompt }, 5 * 60 * 1000);
 
     if (!response) {
@@ -30,6 +38,8 @@ const runCopilot = async (prompt: string): Promise<AuditReport> => {
 
     return parseLlmOutput(auditReportZodSchema, finalText);
   } finally {
+    messageDeltaUnsubscribe();
+    idleUnsubscribe();
     await client.stop();
   }
 };
