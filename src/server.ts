@@ -38,7 +38,6 @@ app.post('/audit', async (req, res) => {
   const stringRules = rules as string[];
 
   try {
-    console.log(`[audit] Received request (${markup.length} bytes, ${stringRules.length} rules)`)
     console.log(`[audit] Auditor: ${getAuditorName()}`)
 
     console.log('[audit] Analyzing with LLM...')

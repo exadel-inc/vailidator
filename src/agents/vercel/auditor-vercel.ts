@@ -26,13 +26,8 @@ const runAgent = async (prompt: string): Promise<AuditReport> => {
   });
 
   // Stream the agent's text output to the node console as it is generated.
-  let streamedChars = 0;
   for await (const delta of result.textStream) {
     process.stdout.write(delta);
-    streamedChars += delta.length;
-  }
-  if (streamedChars > 0) {
-    process.stdout.write('\n');
   }
 
   const finalText = await result.text;
