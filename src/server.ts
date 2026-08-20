@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import path from 'path'
-import { fileURLToPath } from "url";
 import express from 'express'
+import { fileURLToPath } from "url";
 import { generateHtmlReport } from './report/generator.js'
 import { getAuditor, getAuditorName } from './agents/index.js'
 import { accessControlHeadersMiddleware } from './middleware/access-control-headers.js'
@@ -9,6 +9,7 @@ import { accessControlHeadersMiddleware } from './middleware/access-control-head
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 3000)
 const app = express()
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, "../public")));
 app.use('/ui-assets', express.static(path.join(__dirname, '../dist-ui')));
@@ -39,15 +40,16 @@ app.post('/audit', async (req, res) => {
 
   try {
     console.log(`[audit] Auditor: ${getAuditorName()}`)
-
     console.log('[audit] Analyzing with LLM...')
+
     const prompt = `Validate the following HTML markup with the provided validation rules. Take into account that page url: <page_url>${pageUrl}</page_url>\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${stringRules.join('\n')}\n</validation_rules>`;
 
     const runAuditor = getAuditor();
     const agentResponse = await runAuditor(prompt);
-    console.log('[audit] LLM analysis finished.');
 
+    console.log('[audit] LLM analysis finished.');
     console.log('[audit] Generating HTML report...')
+
     const html = generateHtmlReport(agentResponse);
 
     console.log('[audit] Done.')
