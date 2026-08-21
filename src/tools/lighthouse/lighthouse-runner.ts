@@ -130,3 +130,5 @@ function buildCategory(lhr: any, category: 'seo' | 'accessibility'): { score: nu
 
   return { score, audits }
 }
+
+export const LIGHTHOUSE_DESCRIPTION = 'Run Lighthouse SEO and accessibility audits against supplied HTML. Use this when the user asks to audit, validate, or inspect a web page.';

@@ -1,11 +1,10 @@
 import { z } from 'zod';
-import { runLighthouse } from '../../tools/lighthouse/lighthouse-runner.js';
-import { linksChecker } from '../../tools/links-checker/links-checker.js';
+import { runLighthouse, LIGHTHOUSE_DESCRIPTION } from '../../tools/lighthouse/lighthouse-runner.js';
+import { linksChecker, LINKS_CHECKER_TOOL_DESCRIPTION, LINKS_CHECKER_TOOL_NAME } from '../../tools/links-checker/links-checker.js';
 import { defineTool } from "@github/copilot-sdk";
 
 export const copilotLighthouseAudit = defineTool("lighthouse_audit", {
-  description:
-    'Run Lighthouse SEO and accessibility audits against supplied HTML markup. Returns JSON of failed audits.',
+  description: LIGHTHOUSE_DESCRIPTION,
   parameters: z.object({ markup: z.string() }),
   skipPermission: true,
   defer: "never",
@@ -15,9 +14,8 @@ export const copilotLighthouseAudit = defineTool("lighthouse_audit", {
   },
 });
 
-export const copilotCheckLinks = defineTool("check_links", {
-  description:
-    'Run a link checker against a list of link URLs, resolving relative links against the original page URL. Returns JSON with HTTP status per URL.',
+export const copilotCheckLinks = defineTool(LINKS_CHECKER_TOOL_NAME, {
+  description: LINKS_CHECKER_TOOL_DESCRIPTION,
   parameters: z.object({ links: z.array(z.string()), originalUrl: z.string().optional() }),
   skipPermission: true,
   defer: "never",

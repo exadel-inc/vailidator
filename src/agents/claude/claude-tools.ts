@@ -1,12 +1,11 @@
 import type { SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import { runLighthouse } from '../../tools/lighthouse/lighthouse-runner.js';
-import { linksChecker } from '../../tools/links-checker/links-checker.js';
+import { runLighthouse, LIGHTHOUSE_DESCRIPTION } from '../../tools/lighthouse/lighthouse-runner.js';
+import { linksChecker, LINKS_CHECKER_TOOL_DESCRIPTION, LINKS_CHECKER_TOOL_NAME} from '../../tools/links-checker/links-checker.js';
 
 export const claudeLighthouseAuditTool: SdkMcpToolDefinition<{ markup: z.ZodString }> = {
   name: 'lighthouse_audit',
-  description:
-    'Run Lighthouse SEO and accessibility audits against supplied HTML markup. Returns JSON of failed audits.',
+  description: LIGHTHOUSE_DESCRIPTION,
   inputSchema: { markup: z.string() },
   handler: async ({ markup }) => {
     const result = await runLighthouse(markup);
@@ -15,9 +14,8 @@ export const claudeLighthouseAuditTool: SdkMcpToolDefinition<{ markup: z.ZodStri
 };
 
 export const claudeLinksCheckerTool: SdkMcpToolDefinition<{ links: z.ZodArray<z.ZodString>, originalUrl: z.ZodOptional<z.ZodString> }> = {
-  name: 'check_links',
-  description:
-    'Run a link checker against a list of link URLs, resolving relative links against the original page URL. Returns JSON with HTTP status per URL.',
+  name: LINKS_CHECKER_TOOL_NAME,
+  description: LINKS_CHECKER_TOOL_DESCRIPTION,
   inputSchema: { links: z.array(z.string()), originalUrl: z.string().optional() },
   handler: async ({ links, originalUrl }) => {
     const result = await linksChecker(links, originalUrl);
