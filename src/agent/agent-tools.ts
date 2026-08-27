@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { runLighthouse, LIGHTHOUSE_DESCRIPTION } from '../../tools/lighthouse/lighthouse-runner.js';
-import { linksChecker, LINKS_CHECKER_TOOL_DESCRIPTION, LINKS_CHECKER_TOOL_NAME } from '../../tools/links-checker/links-checker.js';
+import { runLighthouse, LIGHTHOUSE_DESCRIPTION, LIGHTHOUSE_TOOL_NAME } from '../tools/lighthouse/lighthouse-runner.js';
+import { linksChecker, LINKS_CHECKER_TOOL_DESCRIPTION, LINKS_CHECKER_TOOL_NAME } from '../tools/links-checker/links-checker.js';
 import { defineTool } from "@github/copilot-sdk";
 
-export const copilotLighthouseAudit = defineTool("lighthouse_audit", {
+export const copilotLighthouseAudit = defineTool(LIGHTHOUSE_TOOL_NAME, {
   description: LIGHTHOUSE_DESCRIPTION,
   parameters: z.object({ markup: z.string() }),
   skipPermission: true,

@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { loadRules, saveRules } from '../services/storage';
+import { loadRules, saveRules } from '../../services/storage';
 
 interface RuleItem {
   id: number;

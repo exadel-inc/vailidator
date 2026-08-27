@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { loadRules } from '../services/storage';
+import { loadRules } from '../../services/storage';
 
 export function ExportTab() {
   const [message, setMessage] = useState<string | null>(null);

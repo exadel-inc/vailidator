@@ -1,5 +1,5 @@
 import { useRef, useState } from 'preact/hooks';
-import { parseRules, saveRules } from '../services/storage';
+import { parseRules, saveRules } from '../../services/storage';
 
 interface ImportStatus {
   ok: boolean;

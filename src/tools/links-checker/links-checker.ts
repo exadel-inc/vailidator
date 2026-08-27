@@ -1,5 +1,8 @@
 import type { LinksCheckerReport } from '../../types/links-checker.types.js'
 
+export const LINKS_CHECKER_TOOL_DESCRIPTION = 'Run a links_checker against a list of links, resolving relative links against the original page URL. HTTP/HTTPS links are checked for reachability; mailto and tel links are validated for email and phone syntax. Use this when the user asks to check links, validate links, or verify links.';
+export const LINKS_CHECKER_TOOL_NAME = 'links_checker';
+
 export async function pingUrl(url: string): Promise<boolean> {
   const scheme = getScheme(url);
 
@@ -11,13 +14,10 @@ export async function pingUrl(url: string): Promise<boolean> {
     return isValidTel(url);
   }
 
-  console.log(`[linksChecker] Pinging URL: ${url}`);
   try {
     const response = await fetch(url);
-    console.log(`[linksChecker] URL: ${url} responded with status: ${response.status}`);
     return response.ok;
   } catch (error) {
-    console.log(`[linksChecker] URL: ${url} failed with error: ${error}`);
     return false;
   }
 }
@@ -56,7 +56,6 @@ export function isValidTel(url: string): boolean {
 
 // Check each link, resolving relative links against the original page URL when provided.
 export async function linksChecker(links: string[], originalUrl?: string): Promise<LinksCheckerReport> {
-  console.log('[linksChecker] Running links checker...')
   const report: LinksCheckerReport = []
 
   const checkPromises = links.map(async (link) => {
@@ -68,8 +67,6 @@ export async function linksChecker(links: string[], originalUrl?: string): Promi
   });
 
   await Promise.all(checkPromises);
-
-  console.log('[linksChecker] Links checker finished.')
 
   return report;
 }
@@ -86,5 +83,3 @@ function resolveUrl(link: string, originalUrl?: string): string {
   }
 }
 
-export const LINKS_CHECKER_TOOL_DESCRIPTION = 'Run a links_checker against a list of links, resolving relative links against the original page URL. HTTP/HTTPS links are checked for reachability; mailto and tel links are validated for email and phone syntax. Use this when the user asks to check links, validate links, or verify links.';
-export const LINKS_CHECKER_TOOL_NAME = 'links_checker';

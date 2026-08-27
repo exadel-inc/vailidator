@@ -6,9 +6,10 @@ interface DropdownProps {
   onToggle: () => void;
   onAudit: () => void;
   onSettings: () => void;
+  onToggleLog: () => void;
 }
 
-export function Dropdown({ open, auditing, onToggle, onAudit, onSettings }: DropdownProps) {
+export function Dropdown({ open, auditing, onToggle, onAudit, onSettings, onToggleLog }: DropdownProps) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Close the menu on an outside click or on Escape.
@@ -34,14 +35,17 @@ export function Dropdown({ open, auditing, onToggle, onAudit, onSettings }: Drop
   }, [open, onToggle]);
 
   return (
-    <div ref={rootRef}>
+    <div ref={rootRef} class="va-dropdown">
       <button class="va-trigger" onClick={onToggle} disabled={auditing}>
-        {auditing ? 'Auditing...' : 'VAIlidator ▾'}
+        {auditing ? 'Auditing...' : 'AEM Page Auditor ▾'}
       </button>
       {open && (
         <div class="va-menu" role="menu">
           <button class="va-menu-item" role="menuitem" onClick={onAudit} disabled={auditing}>
-            Audit
+            Start Audit
+          </button>
+          <button class="va-menu-item" role="menuitem" onClick={onToggleLog} disabled={auditing}>
+            Toggle Log
           </button>
           <button class="va-menu-item" role="menuitem" onClick={onSettings}>
             Settings

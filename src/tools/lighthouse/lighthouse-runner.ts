@@ -9,6 +9,9 @@ import serveStatic from 'serve-static'
 import type { AddressInfo } from 'node:net'
 import type { LighthouseAuditEntry, LighthouseResult } from '../../types/lighthouse.types.js'
 
+export const LIGHTHOUSE_DESCRIPTION = 'Run Lighthouse SEO and accessibility audits against supplied HTML. Use this when the user asks to audit, validate, or inspect a web page.';
+export const LIGHTHOUSE_TOOL_NAME = 'lighthouse';
+
 export interface ServedPage {
   url: string
   cleanup: () => Promise<void>
@@ -60,7 +63,6 @@ export async function runLighthouse(markup: string): Promise<LighthouseResult> {
   let browser: Browser | undefined
 
   try {
-    console.log('[lighthouse] Launching headless Chrome...')
     browser = await puppeteer.launch({
       args: ['--no-sandbox', '--disable-dev-shm-usage'],
     })
@@ -75,13 +77,11 @@ export async function runLighthouse(markup: string): Promise<LighthouseResult> {
       extends: 'lighthouse:default',
     }
 
-    console.log('[lighthouse] Running Lighthouse...')
     const result = await lighthouse(served.url, flags, config)
     if (!result) {
       throw new Error('Lighthouse returned no result')
     }
     const { lhr } = result
-    console.log('[lighthouse] Lighthouse finished.')
 
     const report = {
       seo: buildCategory(lhr, 'seo'),
@@ -130,5 +130,3 @@ function buildCategory(lhr: any, category: 'seo' | 'accessibility'): { score: nu
 
   return { score, audits }
 }
-
-export const LIGHTHOUSE_DESCRIPTION = 'Run Lighthouse SEO and accessibility audits against supplied HTML. Use this when the user asks to audit, validate, or inspect a web page.';

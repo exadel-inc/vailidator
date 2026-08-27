@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
-import { Dropdown } from './Dropdown';
-import { SettingsModal } from './SettingsModal';
+import { Dropdown } from './Dropdown/Dropdown';
+import { SettingsModal } from './SettingsModal/SettingsModal';
+import { Logger } from './Logger/Logger';
 import { getIframeUrl, getMarkup, openReportInTab, runAudit } from '../services/audit';
 import { loadRules } from '../services/storage';
 
@@ -8,6 +9,7 @@ export function App() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [auditing, setAuditing] = useState(false);
+  const [logVisible, setLogVisible] = useState(false);
 
   const handleAudit = async () => {
     setDropdownOpen(false);
@@ -48,6 +50,11 @@ export function App() {
     setSettingsOpen(true);
   };
 
+  const handleLogState = () => {
+    setDropdownOpen(false);
+    setLogVisible(!logVisible);
+  };
+
   return (
     <>
       <Dropdown
@@ -56,8 +63,10 @@ export function App() {
         onToggle={() => setDropdownOpen(!dropdownOpen)}
         onAudit={handleAudit}
         onSettings={handleSettings}
+        onToggleLog={handleLogState}
       />
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      <Logger isVisible={logVisible} />
     </>
   );
 }

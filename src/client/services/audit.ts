@@ -1,3 +1,5 @@
+import { emitServerLog } from './logs';
+
 const AUDIT_PORT = 3011;
 const AUDIT_URL = `http://localhost:${AUDIT_PORT}/audit`;
 
@@ -42,7 +44,9 @@ export function getMarkup(): string | null {
   }
 }
 
-// POST the markup + rules to the audit service and return the rendered report HTML.
+// The audit endpoint responds as an SSE stream: server logs arrive as `log`
+// events (mirrored into this browser's console) and the report HTML arrives as
+// the final `report` event.
 export async function runAudit(markup: string, rules: string[], pageUrl: string): Promise<string> {
   const response = await fetch(AUDIT_URL, {
     method: 'POST',
@@ -53,8 +57,76 @@ export async function runAudit(markup: string, rules: string[], pageUrl: string)
   if (!response.ok) {
     throw new Error(`Server error: ${response.status}`);
   }
+  if (!response.body) {
+    throw new Error('Server did not return a readable stream.');
+  }
 
-  return response.text();
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let reportHtml: string | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE frames are separated by a blank line.
+    const frames = buffer.split('\n\n');
+    buffer = frames.pop() ?? '';
+
+    for (const frame of frames) {
+      const sse = parseSseFrame(frame);
+      if (!sse) continue;
+
+      if (sse.event === 'log') {
+        emitServerLog({ kind: 'log', level: sse.data.level ?? 'log', text: sse.data.message ?? '' });
+      } else if (sse.event === 'delta') {
+        // Streamed content goes to the UI panel only (not the console).
+        emitServerLog({ kind: 'delta', level: 'log', text: sse.data.content ?? '' });
+      } else if (sse.event === 'report') {
+        reportHtml = sse.data.html;
+      } else if (sse.event === 'error') {
+        throw new Error(sse.data.message ?? 'Audit failed');
+      }
+    }
+  }
+
+  if (reportHtml === null) {
+    throw new Error('Server closed the stream without a report.');
+  }
+  return reportHtml;
+}
+
+interface SseFrame {
+  event: string;
+  data: any;
+}
+
+// Parse a single SSE frame ("event: X\ndata: {...}") into its event name and data.
+function parseSseFrame(raw: string): SseFrame | null {
+  let event = 'message';
+  let data = '';
+  for (const line of raw.split('\n')) {
+    if (line.startsWith('event:')) event = line.slice(6).trim();
+    else if (line.startsWith('data:')) data += line.slice(5).trim();
+  }
+  if (!data) return null;
+  try {
+    return { event, data: JSON.parse(data) };
+  } catch {
+    return null;
+  }
+}
+
+// Write a server log entry to this browser's console.
+function logServerEvent(entry: { level?: string; message?: string }): void {
+  const prefix = `[server ${new Date().toLocaleTimeString()}]`;
+  const message = entry.message ?? '';
+  if (entry.level === 'error') console.error(prefix, message);
+  else if (entry.level === 'warn') console.warn(prefix, message);
+  else if (entry.level === 'info') console.info(prefix, message);
+  else console.log(prefix, message);
 }
 
 // Render the report HTML in a new browser tab.

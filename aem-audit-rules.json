@@ -1,0 +1,13 @@
+[
+  "Page must have a Hero banner",
+  "Page must have a phone number",
+  "Links must be valid",
+  "Page must have contact email",
+  "Headings follow a logical order H1->H2->H3->H4; H2->H3->H4",
+  "Infographics have nearby text that explains the same information.",
+  "Lists have more than 1 item.",
+  "Page must contain a visible header",
+  "Page must contain a visible footer",
+  "Page must not contain orphan components outside the main page structure",
+  "Carousels should have at least 2 slides"
+]

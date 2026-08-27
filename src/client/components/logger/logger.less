@@ -1,0 +1,53 @@
+// Terminal-style server log stream panel.
+.va-logger {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2147483647;
+  width: 720px;
+  max-width: calc(100vw - 40px);
+  background: @bg;
+  border: 1px solid @border;
+  border-radius: 8px;
+  box-shadow: @menu-shadow;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow: hidden;
+
+  .va-logger-header {
+    padding: 6px 10px;
+    background: @bg;
+    color: @text-muted;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid @border-light;
+  }
+
+  .va-logger-body {
+    height: 240px;
+    overflow-y: auto;
+    padding: 8px 10px;
+  }
+
+  .va-logger-line {
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: @text;
+
+    &--error {
+      color: @danger;
+    }
+
+    &--warn {
+      color: @primary;
+    }
+
+    &--info {
+      color: @primary-hover;
+    }
+
+    &--log {
+      color: @secondary;
+    }
+  }
+}

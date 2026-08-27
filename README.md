@@ -1,51 +1,33 @@
 # HTML Validation Server
 
-An HTTP server that audits submitted HTML for SEO, accessibility, and custom validation rules. It runs Lighthouse against the markup, sends the Lighthouse findings and rules to an LLM **agent**, and returns a self-contained HTML report.
+An HTTP server that audits submitted HTML for SEO, accessibility, and custom validation rules. It drives a single **GitHub Copilot agent** that runs Lighthouse and link checks against the markup, evaluates the validation rules, and streams its progress to the browser in real time. The audit finishes with a self-contained HTML report.
 
-The server supports three interchangeable auditors, selected with the `AUDITOR` environment variable:
-- `claude` (default) — Claude Agent SDK, runs the locally installed `claude` CLI.
-- `vercel` — AI SDK `ToolLoopAgent` over any OpenAI-compatible endpoint (LM Studio / Ollama / llama.cpp / cloud).
-- `copilot` — GitHub Copilot SDK, drives the locally installed Copilot CLI.
+The repository also contains a browser client (Preact + Webpack) that injects an audit UI into an AEM preview page. It posts the rendered markup and rules to `POST /audit` and shows the agent's live log stream in a terminal-style panel while the audit runs.
 
-The repository also contains a browser client for injecting an audit button into an AEM preview page. Its TypeScript source is bundled with Webpack into `src/client/dist/loader.js` and served by the server at `/ui-assets/loader.js`.
+## Model modes
+
+The Copilot agent can run in two modes:
+
+- **Built-in Copilot models** — the agent uses Copilot's own models. Pick one with `COPILOT_MODEL` (default `auto`). Requires Copilot authentication.
+- **Custom LLM provider** — point the agent at any OpenAI-compatible endpoint (LM Studio, Ollama, llama.cpp, cloud) by setting `CUSTOM_PROVIDER_BASE_URL`, `CUSTOM_PROVIDER_API_KEY`, and `CUSTOM_PROVIDER_MODEL`.
 
 ## Requirements
 
 - Node.js 20 or newer
 - npm
 - A Chromium-compatible browser environment for Puppeteer
-- For the `vercel` auditor: an OpenAI-compatible chat completions endpoint (LM Studio, Ollama, llama.cpp, or a hosted provider)
-- For the `claude` auditor: the `claude` CLI installed and authenticated (via `ANTHROPIC_API_KEY` or `claude login`)
-- For the `copilot` auditor: the `copilot` CLI installed and authenticated (via `GITHUB_TOKEN` or `copilot login`)
+- Copilot CLI installed and authenticated (built-in model mode), or credentials for a custom OpenAI-compatible endpoint
 
-Puppeteer downloads a compatible browser during dependency installation unless it is already available in the local cache. In restricted environments, make sure Chrome or Chromium is available and Puppeteer can launch it.
+Puppeteer downloads a compatible browser during dependency installation unless it is already available in the local cache.
 
-## Installing the agent CLIs
-
-The `claude` and `copilot` auditors drive locally installed CLI tools. Install them globally with npm and log in once.
-
-### Claude Code (`claude`)
-
-```bash
-npm install -g @anthropic-ai/claude-code
-claude --version
-```
-
-Authenticate — either with your Claude subscription or with an API key:
-
-```bash
-claude login        # browser-based OAuth with your claude.ai account (Pro/Max subscription)
-# alternative: set ANTHROPIC_API_KEY in .env for pay-as-you-go Anthropic Console credits
-```
-
-### Copilot CLI (`copilot`)
+## Installing the Copilot CLI
 
 ```bash
 npm install -g @github/copilot
 copilot --version
 ```
 
-Authenticate — either with your GitHub Copilot subscription or with a token:
+Authenticate with your GitHub Copilot subscription:
 
 ```bash
 copilot login       # GitHub OAuth with your Copilot subscription
@@ -59,74 +41,54 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` with the LLM endpoint and model you want to use.
+Edit `.env` with the model/provider you want to use.
 
 ## Configuration
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PORT` | `3000` | Port used by the HTTP server |
-| `ENVIRONMENT` | `development` | When set to `development`, failed Lighthouse audits are also written to `reports/` |
-| `AUDITOR` | `claude` | Which agent runs audits: `claude` (Claude Agent SDK), `vercel` (AI SDK ToolLoopAgent), or `copilot` (GitHub Copilot SDK) |
-| `LLM_BASE_URL` | `http://localhost:1234/v1` | Base URL for an OpenAI-compatible API (vercel auditor) |
-| `LLM_API_KEY` | `local` | API key sent to the LLM provider (vercel auditor) |
-| `LLM_MODEL` | `model-name` | Model name passed to the chat completions API (vercel auditor) |
-| `ANTHROPIC_API_KEY` | *(unset)* | API key for the Claude auditor (Anthropic Console credits); omit to use the `claude login` subscription |
-| `GITHUB_TOKEN` | *(unset)* | GitHub token for the Copilot auditor; omit to use the `copilot login` subscription |
+| `ENVIRONMENT` | `development` | When `development`, Lighthouse reports are also written to `reports/` |
+| `COPILOT_MODEL` | `auto` | Copilot model for the agent (`auto` lets Copilot choose) |
+| `GITHUB_TOKEN` | *(unset)* | GitHub token for Copilot auth; omit to use `copilot login` |
+| `CUSTOM_PROVIDER_BASE_URL` | *(unset)* | Base URL of a custom OpenAI-compatible LLM provider (set all three `CUSTOM_PROVIDER_*` vars to use it) |
+| `CUSTOM_PROVIDER_API_KEY` | *(unset)* | API key for the custom provider |
+| `CUSTOM_PROVIDER_MODEL` | *(unset)* | Model name for the custom provider |
 
 The `.env` file is ignored by Git. Do not commit API keys or other credentials.
 
 ## Running
 
-Start the development server with automatic reloads:
-
 ```bash
-npm run dev
-```
-
-Build the TypeScript source:
-
-```bash
-npm run build
-```
-
-Run the compiled server:
-
-```bash
-npm start
-```
-
-Run ESLint:
-
-```bash
-npm run lint
+npm run dev     # build, then run with hot reload (server + client watcher)
+npm run build   # compile server, build client bundle, run lint
+npm run lint    # ESLint
+npm start       # run dist/server.js after building
 ```
 
 The server listens at `http://localhost:3000` by default.
 
-### Choosing an auditor
+### Choosing the model
 
-Set `AUDITOR` in `.env` or the environment to pick the agent implementation:
+Set `COPILOT_MODEL` in `.env` to use a specific built-in Copilot model (default `auto`):
 
-```bash
-AUDITOR=vercel npm run dev    # AI SDK ToolLoopAgent + LLM_BASE_URL endpoint
-AUDITOR=claude npm run dev    # Claude Agent SDK + local claude CLI (default)
-AUDITOR=copilot npm run dev   # GitHub Copilot SDK + local copilot CLI
+```env
+COPILOT_MODEL=auto
 ```
 
-## Authentication
+To use a custom LLM provider instead, set all three variables:
 
-Each agent CLI must be logged in before it can be used:
-
-- **Claude (`claude`)** — run `claude login` in a terminal to authenticate with your Claude subscription. Alternatively, set `ANTHROPIC_API_KEY` in `.env` to use pay-as-you-go Anthropic Console credits instead.
-- **Copilot (`copilot`)** — run `copilot login` in a terminal to authenticate with your GitHub Copilot subscription. Alternatively, set `GITHUB_TOKEN` in `.env`.
-- **Vercel (`vercel`)** — no login needed; it uses the `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` endpoint directly.
+```env
+CUSTOM_PROVIDER_BASE_URL=http://localhost:1234
+CUSTOM_PROVIDER_API_KEY=local
+CUSTOM_PROVIDER_MODEL=qwen/qwen3.5-9b
+```
 
 ## API
 
 ### `GET /ui-assets/:asset`
 
-Serves a compiled browser client asset from `src/client/dist`. For example:
+Serves a compiled browser client asset from `dist-ui/`. For example:
 
 ```text
 http://localhost:3000/ui-assets/loader.js
@@ -134,13 +96,14 @@ http://localhost:3000/ui-assets/loader.js
 
 ### `POST /audit`
 
-Submit an HTML document and one or more plain-text validation rules as JSON.
+Submit an HTML document, a page URL, and one or more plain-text validation rules as JSON.
 
 Request:
 
 ```json
 {
   "markup": "<!doctype html><html><head><title>Example</title></head><body><h1>Hello</h1></body></html>",
+  "pageUrl": "https://example.com/page",
   "rules": [
     "Page must have a visible phone number",
     "Page must have a clear call to action"
@@ -148,69 +111,70 @@ Request:
 }
 ```
 
-Example with `curl`:
+The body must contain a non-empty `markup` string, a non-empty `pageUrl` string, and a non-empty array of strings `rules`. Invalid requests receive HTTP `400`.
 
-```bash
-curl --location 'http://localhost:3011/audit' \
---header 'Content-Type: application/json' \
---data '{
-  "markup": "<!doctype html><html><head><title>Example</title></head><body><h1>Hello</h1><p>Some content</p><h2>Subtitle</h2></body></html>",
-  "rules": [
-    "Page must have a visible Hero banner with a headline and a call-to-action button",
-    "Page must display a visible phone number",
-    "Page must have a Privacy Policy link in the footer",
-    "Should have a valid heading structure (h1, h2, h3) and semantic HTML elements"
-  ]
-}'
-```
+**Response:** the endpoint responds as a Server-Sent Events (SSE) stream while the audit runs:
 
-The request body must contain a non-empty string `markup` and a non-empty array of strings called `rules`. Invalid requests receive HTTP `400`. Errors during Lighthouse or LLM processing receive HTTP `500` with an HTML error page.
+- `event: log` — `{ "level": "log" | "info" | "warn" | "error", "message": "..." }` — discrete progress logs from the server and agent.
+- `event: delta` — `{ "level": "...", "content": "..." }` — streamed token content (the agent's message/reasoning deltas).
+- `event: report` — `{ "html": "..." }` — the final self-contained HTML report; the stream then closes.
+- `event: error` — `{ "message": "..." }` — the audit failed; the stream closes.
+
+The browser client consumes this stream directly; a raw `curl` call shows the SSE events rather than a plain HTML page.
 
 ## Audit flow
 
-1. The submitted markup and validation rules are packed into a prompt.
-2. The auditor is resolved from the `AUDITOR` environment variable.
-3. The selected agent inspects the markup and calls its audit tools:
-   - `lighthouse_audit` — runs Lighthouse (SEO + accessibility) via Puppeteer against a temporary local HTTP server.
-   - `check_links` — runs the link checker over a list of URLs.
-4. The agent returns an `AuditReport` as JSON, which is validated against `auditReportZodSchema`.
-5. `/audit` renders the result as a self-contained HTML report; `/agent` returns the raw JSON.
-6. Temporary files, the local HTTP server, and the browser are cleaned up.
+1. `POST /audit` opens an SSE stream for the request.
+2. The markup, page URL, and validation rules are packed into a prompt.
+3. `runCopilot(prompt)` runs the agent. It can call its audit tools:
+   - `lighthouse` — runs Lighthouse (SEO + accessibility) via Puppeteer against a temporary local HTTP server.
+   - `links_checker` — checks a list of URLs (HTTP reachability, mailto/tel syntax).
+4. Agent events are streamed to the client: token deltas as `delta`, skills/tool invocations and usage as `log`.
+5. The agent returns an `AuditReport` as JSON, validated against `auditReportZodSchema`.
+6. `generateHtmlReport` produces a self-contained HTML report, sent as the final `report` event.
+7. Temporary files, the local HTTP server, and the browser are cleaned up.
+
+## Client
+
+The browser client (`src/client`) is bundled with Webpack into `dist-ui/loader.js` and served at `/ui-assets/loader.js`. Load it on an AEM author page (or `public/test-page.html`) to get:
+
+- An **Audit** dropdown button (Audit / Settings / Log).
+- A terminal-style **log panel** that renders the streamed server + agent logs in real time.
+- The final report opens in a new browser tab.
+
+`src/client/services/audit.ts` reads the SSE stream, `src/client/services/logs.ts` fans the events out to UI subscribers, and the `Logger` component renders them. `log` events are also mirrored to the browser's DevTools console.
 
 ## Project structure
 
 ```text
 src/
-  server.ts                      Express server, static files, POST /audit + POST /agent endpoints
-  agents/
-    index.ts                     Auditor factory keyed on the AUDITOR env var
-    audit-report-zod-schema.ts   Zod schema + AuditReport type for LLM output
-    system-prompt.ts             Shared system prompt for all auditors
-    claude/
-      auditor-claude.ts          Claude Agent SDK runner (local claude CLI + MCP tools)
-      claude-tools.ts            MCP tool definitions for the Claude auditor
-    copilot/
-      auditor-copilot.ts         GitHub Copilot SDK runner (local copilot CLI)
-      copilot-tools.ts           defineTool definitions for the Copilot auditor
-    vercel/
-      auditor-vercel.ts          AI SDK ToolLoopAgent (OpenAI-compatible endpoint)
-      vercel-tools.ts            AI SDK tool() definitions for the Vercel auditor
+  server.ts                      Express server, static files, POST /audit (SSE stream)
+  agent/
+    agent.ts                     Copilot agent runner (built-in models or custom provider)
+    agent-tools.ts               Copilot tool definitions (lighthouse, links_checker)
+    audit-report-zod-schema.ts   Zod schema + AuditReport type for agent output
+    system-prompt.ts             System prompt for the agent
+  client/
+    loader.ts                    Browser bundle entry: injects the audit UI into AEM
+    components/                  Preact UI components (App, Dropdown, Logger, SettingsModal)
+    services/                    audit.ts (SSE client), logs.ts (pub/sub), storage.ts (rules)
+    declarations.d.ts            .less module type declarations
   helpers/
     response-parser.ts           parseLlmOutput() — cleanup + JSON.parse + zod validate
-  tools/
-    lighthouse/lighthouse-runner.ts   Temporary HTML server and Lighthouse runner
-    links-checker/links-checker.ts    Link checker implementation
-  report/generator.ts           Self-contained HTML report generator
-  client/
-    loader.ts                   Browser script for the AEM audit button
-    components/                 Client-side UI components
-    helpers/                    Client-side helpers
-    dist/                       Webpack output; served at /ui-assets
+    stream.ts                    SSE helpers: clientLog / clientLogDelta / initStream / endStream / failStream
   middleware/
-    access-control-headers.ts   CORS and OPTIONS response middleware
-  types/                        Shared TypeScript interfaces
-public/                         Root static files
-webpack.config.cjs              Browser client Webpack configuration
+    access-control-headers.ts    CORS and OPTIONS response middleware
+  report/
+    generator.ts                 AuditReport -> self-contained HTML report
+  tools/
+    lighthouse/                  Temporary HTML server and Lighthouse runner (SEO + accessibility)
+    links-checker/               Link checker implementation
+  types/                         Shared TypeScript interfaces
+skills/
+  links-checker/                 Agent skill used by the links checker
+public/                          Root static files (test page)
+dist-ui/                         Webpack client bundle output (loader.js)
+webpack.config.cjs               Browser client Webpack configuration
 eslint.config.js                 ESLint flat configuration
 .env.example                     Example environment configuration
 ```
@@ -223,15 +187,13 @@ Build the browser client once with:
 npm run build:client
 ```
 
-During `npm run dev`, Webpack watches `src/client` and rebuilds `src/client/dist/loader.js` whenever client sources change. Nodemon separately watches server TypeScript sources and restarts the server when they change.
-
-To run only the client watcher:
+Watch mode:
 
 ```bash
 npm run dev:client
 ```
 
-Edit files under `src/client`, not the generated JavaScript in `src/client/dist`.
+`npm run dev` runs Nodemon for the server and Webpack watch mode for the client, rebuilding `dist-ui/loader.js` whenever client sources change. Edit files under `src/client`; do not edit generated files in `dist-ui`.
 
 ## Troubleshooting
 
@@ -239,21 +201,13 @@ Edit files under `src/client`, not the generated JavaScript in `src/client/dist`
 
 Make sure the machine has a compatible Chrome or Chromium installation and that the process is allowed to launch a headless browser. The server includes `--no-sandbox` and `--disable-dev-shm-usage` launch arguments for common server environments.
 
-### The LLM request fails
+### The Copilot agent reports "Not logged in"
 
-Check that `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL` match the configured provider. The endpoint must support OpenAI-compatible chat completions and structured JSON responses.
+The agent authenticates with `GITHUB_TOKEN` if it is set; otherwise it falls back to the OAuth login stored by `copilot login`. If you omit the token and get "Not logged in", run `copilot login` once in a terminal (same user account as the server).
 
-### The Claude auditor reports "Not logged in"
+### The custom provider is ignored
 
-The `claude` auditor authenticates with `ANTHROPIC_API_KEY` if it is set; otherwise it falls back to the OAuth login stored by `claude login`. If you omit the API key and get "Not logged in · Please run /login", run `claude login` once in a terminal (same user account as the server).
-
-### Billing for the Claude auditor
-
-With `ANTHROPIC_API_KEY` set, Claude Code bills through the Anthropic Console (pay-as-you-go). Without it, the auditor uses your `claude login` subscription. The CLI prefers an API key over the subscription whenever one is present in the environment.
-
-### The Copilot auditor reports "Not logged in"
-
-The `copilot` auditor authenticates with `GITHUB_TOKEN` if it is set; otherwise it falls back to the OAuth login stored by `copilot login`. If you omit the token and get "Not logged in", run `copilot login` once in a terminal (same user account as the server).
+The custom provider is only used when all three variables are set: `CUSTOM_PROVIDER_BASE_URL`, `CUSTOM_PROVIDER_API_KEY`, and `CUSTOM_PROVIDER_MODEL`. Otherwise the agent falls back to built-in Copilot models.
 
 ### The server is using the wrong port
 

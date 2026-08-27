@@ -3,8 +3,9 @@ import path from 'path'
 import express from 'express'
 import { fileURLToPath } from "url";
 import { generateHtmlReport } from './report/generator.js'
-import { getAuditor, getAuditorName } from './agents/index.js'
+import { clientLog, initStream, endStream, failStream } from './helpers/stream.js'
 import { accessControlHeadersMiddleware } from './middleware/access-control-headers.js'
+import runCopilot from './agent/agent.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 3000)
@@ -32,53 +33,34 @@ app.post('/audit', async (req, res) => {
     return
   }
 
-  console.log(`\n[audit] Received request for page: ${pageUrl}`)
-  console.log(`[audit] Markup length: ${markup.length} bytes`)
-  console.log(`[audit] Received ${rules.length} rules\n`)
+  initStream(res)
+  clientLog(`Received audit request request for page: ${pageUrl}`)
+  clientLog(`Markup length: ${markup.length} bytes`)
+  clientLog(`Received ${rules.length} rules`)
 
   const stringRules = rules as string[];
 
   try {
-    console.log(`[audit] Auditor: ${getAuditorName()}`)
-    console.log('[audit] Analyzing with LLM...')
+    clientLog(`Analyzing with LLM...`)
 
     const prompt = `Validate the following HTML markup with the provided validation rules. Take into account that page url: <page_url>${pageUrl}</page_url>\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${stringRules.join('\n')}\n</validation_rules>`;
 
-    const runAuditor = getAuditor();
-    const agentResponse = await runAuditor(prompt);
+    const agentResponse = await runCopilot(prompt);
 
-    console.log('[audit] LLM analysis finished.');
-    console.log('[audit] Generating HTML report...')
+    clientLog(`LLM analysis finished.`);
+    clientLog(`Generating HTML report...`)
 
     const html = generateHtmlReport(agentResponse);
 
-    console.log('[audit] Done.')
-    res.type('html').send(html)
+    clientLog(`Done.`)
+    endStream(html)
   } catch (err) {
-    console.error('[audit] Failed:', err)
     const message = (err as Error).message
-    res.status(500).type('html').send(
-      `<!DOCTYPE html>
-      <html lang="en">
-        <head><meta charset="UTF-8"><title>Audit failed</title></head>
-        <body style="font-family: sans-serif; padding: 2rem;">
-          <h1>Audit failed</h1>
-          <pre style="background: #f1f5f9; padding: 1rem; border-radius: 8px;">${escapeHtml(message)}</pre>
-        </body>
-      </html>`
-    )
+    clientLog(`Failed: ${message}`, 'error')
+    failStream(message)
   }
 })
 
 app.listen(port, () => {
   console.log(`Server listening on http://localhost:${port}`)
 })
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
