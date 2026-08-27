@@ -83,3 +83,13 @@ function resolveUrl(link: string, originalUrl?: string): string {
   }
 }
 
+export function extractLinksFromMarkup(markup: string): string[] {
+  const linkRegex = /href="([^"]*)"/g;
+  const links: string[] = [];
+  let match;
+  while ((match = linkRegex.exec(markup)) !== null) {
+    links.push(match[1]);
+  }
+  return links;
+}
+

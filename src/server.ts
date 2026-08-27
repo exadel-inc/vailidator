@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import { clientLog, initStream, endStream, failStream } from './helpers/stream.js'
 import { accessControlHeadersMiddleware } from './middleware/access-control-headers.js'
 import runCopilot from './agent/agent.js';
+import type { AgentRequestData } from './types/agent-request.types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 3000)
@@ -44,10 +45,13 @@ app.post('/audit', async (req, res) => {
 
   try {
     clientLog(`Analyzing with LLM...`)
+    const AgentRequestData: AgentRequestData = {
+      markup,
+      rules: stringRules,
+      pageUrl,
+    };
 
-    const prompt = `Validate the following HTML markup with the provided validation rules. Take into account that page url: <page_url>${pageUrl}</page_url>\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${stringRules.join('\n')}\n</validation_rules>`;
-
-    const agentResponse = await runCopilot(prompt, abortController.signal);
+    const agentResponse = await runCopilot(AgentRequestData, abortController.signal);
 
     clientLog(`LLM analysis finished.`);
     clientLog(`Sending report to client...`)

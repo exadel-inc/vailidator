@@ -1,9 +1,11 @@
 import { CopilotClient, approveAll, ToolSet, SessionConfig, ProviderConfig } from "@github/copilot-sdk";
-import { copilotLighthouseAudit, copilotCheckLinks } from './agent-tools.js';
+import { buildLighthouseAuditTool, buildLinksCheckerTool } from './agent-tools.js';
+import { extractLinksFromMarkup } from '../tools/links-checker/links-checker.js';
 import { auditReportZodSchema, AuditReport } from './audit-report-zod-schema.js';
 import { parseLlmOutput, isInvalidLlmOutput } from '../helpers/response-parser.js';
 import { clientLog, createDeltaLogger } from '../helpers/stream.js';
 import SYSTEM_PROMPT from './system-prompt.js';
+import type { AgentRequestData } from '../types/agent-request.types.js';
 
 const MODEL = process.env.COPILOT_MODEL || "auto";
 const REASONING_EFFORT = "high"; 
@@ -25,7 +27,6 @@ const sessionConfig: SessionConfig = {
     "./skills",
   ],
   onPermissionRequest: approveAll,
-  tools: [copilotLighthouseAudit, copilotCheckLinks],
   availableTools: new ToolSet().addCustom("*")
 }
 
@@ -62,20 +63,28 @@ function cancelled(): Error {
 }
 
 // Runs one full audit attempt with its own client and session.
-const runCopilotOnce = async (prompt: string, signal?: AbortSignal): Promise<AuditReport> => {
+const runCopilotOnce = async (agentRequestData: AgentRequestData, signal?: AbortSignal): Promise<AuditReport> => {
   const client = new CopilotClient({
     sessionIdleTimeoutSeconds: 60 * 10,
     gitHubToken: process.env.GITHUB_TOKEN || undefined,
   });
 
+  const { markup, rules, pageUrl } = agentRequestData;
+  const prompt = `Validate the following HTML markup with the provided validation rules. Take into account that page url: <page_url>${pageUrl}</page_url>\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${rules.join('\n')}\n</validation_rules>`;
+
+  sessionConfig.tools = [
+    buildLighthouseAuditTool(markup),
+    buildLinksCheckerTool(extractLinksFromMarkup(markup), pageUrl),
+  ];
+
   const session = await client.createSession(sessionConfig);
   const streamMessageDeltas = createDeltaLogger();
   const unsubscribe: Array<() => void> = [];
 
-  // Cancel the in-flight message when the caller aborts (e.g. client disconnected).
   const onAbort = () => {
     session.abort().catch(() => {});
   };
+  
   if (signal) {
     if (signal.aborted) onAbort();
     else signal.addEventListener('abort', onAbort, { once: true });
@@ -110,6 +119,10 @@ const runCopilotOnce = async (prompt: string, signal?: AbortSignal): Promise<Aud
     logSessionEvent(event.type, () => clientLog(`Tool progress: ${event.data.progressMessage}`, 'info'));
   }));
 
+  unsubscribe.push(session.on("session.error", (event) => {
+    logSessionEvent(event.type, () => clientLog(`Agent session error: ${event.data.message}`, 'warn'));
+  }));
+
   unsubscribe.push(session.on("assistant.usage", (event) => {
     const { inputTokens, outputTokens, cost, model  } = event.data;
     usage.model = model || usage.model;
@@ -141,13 +154,13 @@ const runCopilotOnce = async (prompt: string, signal?: AbortSignal): Promise<Aud
 };
 
 // Runs the agent, retrying when the LLM output is invalid.
-const runCopilot = async (prompt: string, signal?: AbortSignal): Promise<AuditReport> => {
+const runCopilot = async (agentRequestData: AgentRequestData, signal?: AbortSignal): Promise<AuditReport> => {
   const maxAttempts = MAX_RETRIES + 1;
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const report = await runCopilotOnce(prompt, signal);
+      const report = await runCopilotOnce(agentRequestData, signal);
 
       clientLog(`\nTotal usage:`);
       clientLog(`Input tokens: ${usage.inputTokens}`);
