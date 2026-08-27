@@ -50,6 +50,7 @@ Edit `.env` with the model/provider you want to use.
 | `PORT` | `3000` | Port used by the HTTP server |
 | `ENVIRONMENT` | `development` | When `development`, Lighthouse reports are also written to `reports/` |
 | `COPILOT_MODEL` | `auto` | Copilot model for the agent (`auto` lets Copilot choose) |
+| `AGENT_RETRIES` | `3` | Number of retries when the agent returns invalid LLM output (malformed JSON / schema mismatch) |
 | `GITHUB_TOKEN` | *(unset)* | GitHub token for Copilot auth; omit to use `copilot login` |
 | `CUSTOM_PROVIDER_BASE_URL` | *(unset)* | Base URL of a custom OpenAI-compatible LLM provider (set all three `CUSTOM_PROVIDER_*` vars to use it) |
 | `CUSTOM_PROVIDER_API_KEY` | *(unset)* | API key for the custom provider |

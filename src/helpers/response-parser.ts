@@ -1,6 +1,22 @@
 import { z } from 'zod';
 
 /**
+ * Error thrown when an LLM response cannot be parsed into the expected
+ * JSON structure or fails schema validation. Retryable.
+ */
+export class InvalidLlmOutputError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InvalidLlmOutputError'
+  }
+}
+
+/** True when a failure is caused by invalid LLM output (malformed JSON or schema mismatch). */
+export function isInvalidLlmOutput(error: unknown): boolean {
+  return error instanceof InvalidLlmOutputError || error instanceof z.ZodError
+}
+
+/**
  * Cleans up a raw LLM response and parses it with the given Zod schema.
  *
  * Handles the common ways a model wraps its JSON output:
@@ -23,7 +39,7 @@ export function parseLlmOutput<T>(schema: z.ZodType<T>, response: unknown): T {
   try {
     parsed = JSON.parse(json);
   } catch (error) {
-    throw new Error(
+    throw new InvalidLlmOutputError(
       `Failed to parse LLM response as JSON: ${error instanceof Error ? error.message : String(error)}. Raw: ${truncate(response)}`
     );
   }
@@ -57,7 +73,7 @@ function extractJson(input: string): string {
         : Math.min(firstBrace, firstBracket);
 
   if (start === -1) {
-    throw new Error(`No JSON object or array found in LLM response: ${truncate(trimmed)}`);
+    throw new InvalidLlmOutputError(`No JSON object or array found in LLM response: ${truncate(trimmed)}`);
   }
 
   return trimmed.slice(start, findJsonEnd(trimmed, start));
@@ -95,7 +111,7 @@ function findJsonEnd(text: string, start: number): number {
     }
   }
 
-  throw new Error(`Unbalanced JSON in LLM response starting at index ${start}`);
+  throw new InvalidLlmOutputError(`Unbalanced JSON in LLM response starting at index ${start}`);
 }
 
 /** Shortens long text for error messages. */
