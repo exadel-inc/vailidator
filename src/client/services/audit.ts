@@ -1,3 +1,4 @@
+import type { AuditReport } from '../../types/audit-reports.types.js';
 import { emitServerLog } from './logs';
 
 const AUDIT_PORT = 3011;
@@ -45,9 +46,9 @@ export function getMarkup(): string | null {
 }
 
 // The audit endpoint responds as an SSE stream: server logs arrive as `log`
-// events (mirrored into this browser's console) and the report HTML arrives as
+// events, streamed content as `delta`, and the validated report JSON arrives as
 // the final `report` event.
-export async function runAudit(markup: string, rules: string[], pageUrl: string): Promise<string> {
+export async function runAudit(markup: string, rules: string[], pageUrl: string): Promise<AuditReport> {
   const response = await fetch(AUDIT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -64,7 +65,7 @@ export async function runAudit(markup: string, rules: string[], pageUrl: string)
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  let reportHtml: string | null = null;
+  let report: AuditReport | null = null;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -85,17 +86,17 @@ export async function runAudit(markup: string, rules: string[], pageUrl: string)
         // Streamed content goes to the UI panel only (not the console).
         emitServerLog({ kind: 'delta', level: 'log', text: sse.data.content ?? '' });
       } else if (sse.event === 'report') {
-        reportHtml = sse.data.html;
+        report = sse.data.report;
       } else if (sse.event === 'error') {
         throw new Error(sse.data.message ?? 'Audit failed');
       }
     }
   }
 
-  if (reportHtml === null) {
+  if (report === null) {
     throw new Error('Server closed the stream without a report.');
   }
-  return reportHtml;
+  return report;
 }
 
 interface SseFrame {
@@ -129,12 +130,3 @@ function logServerEvent(entry: { level?: string; message?: string }): void {
   else console.log(prefix, message);
 }
 
-// Render the report HTML in a new browser tab.
-export function openReportInTab(html: string): void {
-  const tab = window.open('', '_blank');
-  if (!tab) {
-    throw new Error('Failed to open new tab. Check popup blocker.');
-  }
-  tab.document.write(html);
-  tab.document.close();
-}

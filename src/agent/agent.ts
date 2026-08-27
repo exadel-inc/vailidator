@@ -55,8 +55,14 @@ function logSessionEvent(eventType: string, logEvent: () => void) {
   lastEventType = eventType;
 }
 
+function cancelled(): Error {
+  const err = new Error('Audit cancelled');
+  err.name = 'AbortError';
+  return err;
+}
+
 // Runs one full audit attempt with its own client and session.
-const runCopilotOnce = async (prompt: string): Promise<AuditReport> => {
+const runCopilotOnce = async (prompt: string, signal?: AbortSignal): Promise<AuditReport> => {
   const client = new CopilotClient({
     sessionIdleTimeoutSeconds: 60 * 10,
     gitHubToken: process.env.GITHUB_TOKEN || undefined,
@@ -65,6 +71,15 @@ const runCopilotOnce = async (prompt: string): Promise<AuditReport> => {
   const session = await client.createSession(sessionConfig);
   const streamMessageDeltas = createDeltaLogger();
   const unsubscribe: Array<() => void> = [];
+
+  // Cancel the in-flight message when the caller aborts (e.g. client disconnected).
+  const onAbort = () => {
+    session.abort().catch(() => {});
+  };
+  if (signal) {
+    if (signal.aborted) onAbort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+  }
 
   unsubscribe.push(session.on("assistant.message_delta", (event) => {
     process.stdout.write(event.data.deltaContent);
@@ -104,11 +119,21 @@ const runCopilotOnce = async (prompt: string): Promise<AuditReport> => {
   }));
 
   try {
-    const response = await session.sendAndWait({ prompt }, 5 * 60 * 1000);
+    // Settle immediately if the caller aborts so we don't hang on disconnect.
+    const sendPromise = session.sendAndWait({ prompt }, 5 * 60 * 1000);
+    const abortPromise = signal
+      ? new Promise<never>((_, reject) => {
+          if (signal.aborted) reject(cancelled());
+          else signal.addEventListener('abort', () => reject(cancelled()), { once: true });
+        })
+      : null;
+
+    const response = abortPromise ? await Promise.race([sendPromise, abortPromise]) : await sendPromise;
     if (!response) throw new Error('Copilot returned no final message');
 
     return parseLlmOutput(auditReportZodSchema, response.data.content);
   } finally {
+    if (signal) signal.removeEventListener('abort', onAbort);
     unsubscribe.forEach(u => u());
     streamMessageDeltas.flush();
     await client.stop();
@@ -116,13 +141,13 @@ const runCopilotOnce = async (prompt: string): Promise<AuditReport> => {
 };
 
 // Runs the agent, retrying when the LLM output is invalid.
-const runCopilot = async (prompt: string): Promise<AuditReport> => {
+const runCopilot = async (prompt: string, signal?: AbortSignal): Promise<AuditReport> => {
   const maxAttempts = MAX_RETRIES + 1;
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const report = await runCopilotOnce(prompt);
+      const report = await runCopilotOnce(prompt, signal);
 
       clientLog(`\nTotal usage:`);
       clientLog(`Input tokens: ${usage.inputTokens}`);

@@ -1,6 +1,6 @@
 # HTML Validation Server
 
-An HTTP server that audits submitted HTML for SEO, accessibility, and custom validation rules. It drives a single **GitHub Copilot agent** that runs Lighthouse and link checks against the markup, evaluates the validation rules, and streams its progress to the browser in real time. The audit finishes with a self-contained HTML report.
+An HTTP server that audits submitted HTML for SEO, accessibility, and custom validation rules. It drives a single **GitHub Copilot agent** that runs Lighthouse and link checks against the markup, evaluates the validation rules, and streams its progress to the browser in real time. The audit finishes with a validated JSON report that the browser client renders in a modal.
 
 The repository also contains a browser client (Preact + Webpack) that injects an audit UI into an AEM preview page. It posts the rendered markup and rules to `POST /audit` and shows the agent's live log stream in a terminal-style panel while the audit runs.
 
@@ -118,7 +118,7 @@ The body must contain a non-empty `markup` string, a non-empty `pageUrl` string,
 
 - `event: log` — `{ "level": "log" | "info" | "warn" | "error", "message": "..." }` — discrete progress logs from the server and agent.
 - `event: delta` — `{ "level": "...", "content": "..." }` — streamed token content (the agent's message/reasoning deltas).
-- `event: report` — `{ "html": "..." }` — the final self-contained HTML report; the stream then closes.
+- `event: report` — `{ "report": { ... } }` — the final validated report JSON; the stream then closes.
 - `event: error` — `{ "message": "..." }` — the audit failed; the stream closes.
 
 The browser client consumes this stream directly; a raw `curl` call shows the SSE events rather than a plain HTML page.
@@ -132,7 +132,7 @@ The browser client consumes this stream directly; a raw `curl` call shows the SS
    - `links_checker` — checks a list of URLs (HTTP reachability, mailto/tel syntax).
 4. Agent events are streamed to the client: token deltas as `delta`, skills/tool invocations and usage as `log`.
 5. The agent returns an `AuditReport` as JSON, validated against `auditReportZodSchema`.
-6. `generateHtmlReport` produces a self-contained HTML report, sent as the final `report` event.
+6. The validated `AuditReport` JSON is sent as the final `report` event; the browser client renders it.
 7. Temporary files, the local HTTP server, and the browser are cleaned up.
 
 ## Client
@@ -141,7 +141,7 @@ The browser client (`src/client`) is bundled with Webpack into `dist-ui/loader.j
 
 - An **Audit** dropdown button (Audit / Settings / Log).
 - A terminal-style **log panel** that renders the streamed server + agent logs in real time.
-- The final report opens in a new browser tab.
+- The final report is rendered in a large modal and can be reopened anytime via the dropdown's **Show Result** item.
 
 `src/client/services/audit.ts` reads the SSE stream, `src/client/services/logs.ts` fans the events out to UI subscribers, and the `Logger` component renders them. `log` events are also mirrored to the browser's DevTools console.
 
@@ -157,7 +157,7 @@ src/
     system-prompt.ts             System prompt for the agent
   client/
     loader.ts                    Browser bundle entry: injects the audit UI into AEM
-    components/                  Preact UI components (App, Dropdown, Logger, SettingsModal)
+    components/                  Preact UI components (App, Dropdown, Logger, Report, SettingsModal)
     services/                    audit.ts (SSE client), logs.ts (pub/sub), storage.ts (rules)
     declarations.d.ts            .less module type declarations
   helpers/
@@ -165,8 +165,6 @@ src/
     stream.ts                    SSE helpers: clientLog / clientLogDelta / initStream / endStream / failStream
   middleware/
     access-control-headers.ts    CORS and OPTIONS response middleware
-  report/
-    generator.ts                 AuditReport -> self-contained HTML report
   tools/
     lighthouse/                  Temporary HTML server and Lighthouse runner (SEO + accessibility)
     links-checker/               Link checker implementation

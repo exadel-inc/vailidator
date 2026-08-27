@@ -1,0 +1,149 @@
+.va-modal--wide {
+  width: 860px;
+}
+
+.va-report-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.va-report-summary {
+  margin: 0 0 16px;
+  font-size: 15px;
+  color: @bg;
+  background: @secondary;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.va-scoreboard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.va-score-card {
+  background: @hover-bg;
+  border: 1px solid @border-light;
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: center;
+
+  .va-score-label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: @text-muted;
+    margin-bottom: 4px;
+  }
+
+  .va-score-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: @text;
+  }
+
+  .va-score-sub {
+    display: block;
+    font-size: 12px;
+    color: @text-muted;
+    margin-top: 2px;
+  }
+}
+
+.va-report-section {
+  margin-bottom: 24px;
+
+  h3 {
+    margin: 0 0 12px;
+    font-size: 17px;
+  }
+}
+
+.va-report-empty {
+  color: @text-muted;
+  font-style: italic;
+}
+
+.va-report-item {
+  border: 1px solid @border;
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: @bg;
+
+  &--fail {
+    border-left-color: @danger;
+  }
+
+  &--warning {
+    border-left-color: #d97706;
+  }
+
+  &--pass {
+    border-left-color: @success;
+  }
+}
+
+.va-report-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+
+  h4 {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  code {
+    font-size: 12px;
+    color: @text-muted;
+    background: @hover-bg;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+}
+
+.va-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: @bg;
+
+  &--pass {
+    background: @success;
+  }
+
+  &--fail {
+    background: @danger;
+  }
+
+  &--warning {
+    background: @warning;
+  }
+}
+
+.va-report-desc {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: @text;
+}
+
+.va-report-reco {
+  margin: 0;
+  font-size: 13px;
+  color: @text-muted;
+  background: @hover-bg;
+  border-radius: 6px;
+  padding: 8px 10px;
+}

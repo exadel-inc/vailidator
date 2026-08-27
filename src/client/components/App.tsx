@@ -1,8 +1,10 @@
 import { useState } from 'preact/hooks';
+import type { AuditReport } from '../../types/audit-reports.types.js';
 import { Dropdown } from './Dropdown/Dropdown';
 import { SettingsModal } from './SettingsModal/SettingsModal';
+import { Report } from './Report/Report';
 import { Logger } from './Logger/Logger';
-import { getIframeUrl, getMarkup, openReportInTab, runAudit } from '../services/audit';
+import { getIframeUrl, getMarkup, runAudit } from '../services/audit';
 import { loadRules } from '../services/storage';
 
 export function App() {
@@ -10,6 +12,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [auditing, setAuditing] = useState(false);
   const [logVisible, setLogVisible] = useState(false);
+  const [report, setReport] = useState<AuditReport | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const handleAudit = async () => {
     setDropdownOpen(false);
@@ -35,9 +39,10 @@ export function App() {
     setAuditing(true);
     try {
       console.log('[AEM Audit] Running audit...');
-      const html = await runAudit(markup, rules, pageUrl);
-      openReportInTab(html);
-      console.log('[AEM Audit] Report opened in new tab.');
+      const result = await runAudit(markup, rules, pageUrl);
+      setReport(result);
+      setReportOpen(true);
+      console.log('[AEM Audit] Report rendered.');
     } catch (err) {
       alert(`Audit failed: ${(err as Error).message}`);
     } finally {
@@ -55,6 +60,11 @@ export function App() {
     setLogVisible(!logVisible);
   };
 
+  const handleShowResult = () => {
+    setDropdownOpen(false);
+    setReportOpen(true);
+  };
+
   return (
     <>
       <Dropdown
@@ -64,8 +74,11 @@ export function App() {
         onAudit={handleAudit}
         onSettings={handleSettings}
         onToggleLog={handleLogState}
+        onShowResult={handleShowResult}
+        hasResult={report !== null}
       />
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {report && reportOpen && <Report report={report} onClose={() => setReportOpen(false)} />}
       <Logger isVisible={logVisible} />
     </>
   );

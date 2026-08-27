@@ -2,7 +2,6 @@ import 'dotenv/config'
 import path from 'path'
 import express from 'express'
 import { fileURLToPath } from "url";
-import { generateHtmlReport } from './report/generator.js'
 import { clientLog, initStream, endStream, failStream } from './helpers/stream.js'
 import { accessControlHeadersMiddleware } from './middleware/access-control-headers.js'
 import runCopilot from './agent/agent.js';
@@ -33,7 +32,10 @@ app.post('/audit', async (req, res) => {
     return
   }
 
-  initStream(res)
+  // Initialize the SSE stream for this request; clientLog writes into it.
+  // If the client disconnects (closes/refreshes the page), abort the agent.
+  const abortController = new AbortController();
+  initStream(res, () => abortController.abort())
   clientLog(`Received audit request request for page: ${pageUrl}`)
   clientLog(`Markup length: ${markup.length} bytes`)
   clientLog(`Received ${rules.length} rules`)
@@ -45,16 +47,18 @@ app.post('/audit', async (req, res) => {
 
     const prompt = `Validate the following HTML markup with the provided validation rules. Take into account that page url: <page_url>${pageUrl}</page_url>\n\n<html_markup>:\n${markup}\n</html_markup>\n<validation_rules>:\n${stringRules.join('\n')}\n</validation_rules>`;
 
-    const agentResponse = await runCopilot(prompt);
+    const agentResponse = await runCopilot(prompt, abortController.signal);
 
     clientLog(`LLM analysis finished.`);
-    clientLog(`Generating HTML report...`)
+    clientLog(`Sending report to client...`)
 
-    const html = generateHtmlReport(agentResponse);
-
+    endStream(agentResponse)
     clientLog(`Done.`)
-    endStream(html)
   } catch (err) {
+    if (abortController.signal.aborted) {
+      clientLog(`Audit cancelled — client disconnected.`, 'info')
+      return
+    }
     const message = (err as Error).message
     clientLog(`Failed: ${message}`, 'error')
     failStream(message)

@@ -10,7 +10,7 @@ let current: Response | null = null
  * target of subsequent `clientLog` calls. Call this once at the start of the
  * /audit handler, before any logging.
  */
-export function initStream(res: Response): void {
+export function initStream(res: Response, onDisconnect?: () => void): void {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -20,6 +20,7 @@ export function initStream(res: Response): void {
   current = res
   res.on('close', () => {
     if (current === res) current = null
+    onDisconnect?.()
   })
 }
 
@@ -52,10 +53,10 @@ export function clientLogDelta(content: string, level: ClientLogLevel = 'log'): 
 }
 
 /**
- * Sends the final report HTML to the client and closes the stream.
+ * Sends the final validated report to the client and closes the stream.
  */
-export function endStream(html: string): void {
-  sendEvent('report', { html })
+export function endStream(report: unknown): void {
+  sendEvent('report', { report })
   current?.end()
   current = null
 }

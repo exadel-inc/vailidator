@@ -3,13 +3,15 @@ import { useEffect, useRef } from 'preact/hooks';
 interface DropdownProps {
   open: boolean;
   auditing: boolean;
+  hasResult: boolean;
   onToggle: () => void;
   onAudit: () => void;
   onSettings: () => void;
   onToggleLog: () => void;
+  onShowResult: () => void;
 }
 
-export function Dropdown({ open, auditing, onToggle, onAudit, onSettings, onToggleLog }: DropdownProps) {
+export function Dropdown({ open, auditing, hasResult, onToggle, onAudit, onSettings, onToggleLog, onShowResult }: DropdownProps) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Close the menu on an outside click or on Escape.
@@ -43,6 +45,9 @@ export function Dropdown({ open, auditing, onToggle, onAudit, onSettings, onTogg
         <div class="va-menu" role="menu">
           <button class="va-menu-item" role="menuitem" onClick={onAudit} disabled={auditing}>
             Start Audit
+          </button>
+          <button class="va-menu-item" role="menuitem" onClick={onShowResult} disabled={!hasResult || auditing}>
+            Show Result
           </button>
           <button class="va-menu-item" role="menuitem" onClick={onToggleLog} disabled={auditing}>
             Toggle Log
