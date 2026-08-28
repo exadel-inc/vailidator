@@ -27,7 +27,9 @@ const sessionConfig: SessionConfig = {
     "./skills",
   ],
   onPermissionRequest: approveAll,
-  availableTools: new ToolSet().addCustom("*")
+  availableTools: new ToolSet()
+  .addCustom("*")
+  .addBuiltIn("skill")
 }
 
 if (isCustomProvider) {
