@@ -14,7 +14,6 @@ const REASONING_EFFORT = "high";
 const configuredRetries = Number(process.env.AGENT_RETRIES ?? 3);
 const MAX_RETRIES = Number.isNaN(configuredRetries) ? 3 : Math.max(0, configuredRetries);
 
-let lastEventType: string = '';
 const isCustomProvider = process.env.CUSTOM_PROVIDER_BASE_URL && process.env.CUSTOM_PROVIDER_API_KEY && process.env.CUSTOM_PROVIDER_MODEL;
 
 const sessionConfig: SessionConfig = {
@@ -45,24 +44,18 @@ if (isCustomProvider) {
 
 if (MODEL !== "auto") sessionConfig.reasoningEffort = REASONING_EFFORT;
 
-const usage = {
+function cancelled(): Error {
+  const err = new Error('Audit cancelled');
+  err.name = 'AbortError';
+  return err;
+}
+
+let usage = {
   model: MODEL,
   reasoningEffort: REASONING_EFFORT,
   inputTokens: 0,
   outputTokens: 0,
   cost: 0
-}
-
-function logSessionEvent(eventType: string, logEvent: () => void) {
-  if (lastEventType !== eventType) clientLog(`\n`);
-  logEvent();
-  lastEventType = eventType;
-}
-
-function cancelled(): Error {
-  const err = new Error('Audit cancelled');
-  err.name = 'AbortError';
-  return err;
 }
 
 // Runs one full audit attempt with its own client and session.
@@ -95,28 +88,28 @@ const runCopilotOnce = async (agentRequestData: AgentRequestData, signal?: Abort
 
   unsubscribe.push(session.on("assistant.message_delta", (event) => {
     process.stdout.write(event.data.deltaContent);
-    logSessionEvent(event.type, () => streamMessageDeltas.push(event.data.deltaContent, 'info'));
+    streamMessageDeltas.push(event.data.deltaContent, 'info');
   }));
 
   unsubscribe.push(session.on("assistant.reasoning_delta", (event) => {
     process.stdout.write(event.data.deltaContent);
-    logSessionEvent(event.type, () => streamMessageDeltas.push(event.data.deltaContent, 'info'));
+    streamMessageDeltas.push(event.data.deltaContent, 'info');
   }));
 
   unsubscribe.push(session.on("skill.invoked", (event) => {
-    logSessionEvent(event.type, () => clientLog(`Skill invoked ${event.data.name}`, 'info'));
+    clientLog(`[skill invokation] ${event.data.name}`, 'info');
   }));
 
   unsubscribe.push(session.on("tool.execution_start", (event) => {
-    logSessionEvent(event.type, () => clientLog(`Agent is using tool ${event.data.toolName}`, 'info'));
+    clientLog(`[tool call] ${event.data.toolName}`, 'info');
   }));
 
   unsubscribe.push(session.on("tool.execution_progress", (event) => {
-    logSessionEvent(event.type, () => clientLog(`Tool progress: ${event.data.progressMessage}`, 'info'));
+    clientLog(`[tool progress] ${event.data.progressMessage}`, 'info');
   }));
 
   unsubscribe.push(session.on("session.error", (event) => {
-    logSessionEvent(event.type, () => clientLog(`Agent session error: ${event.data.message}`, 'warn'));
+    clientLog(`Agent session error: ${event.data.message}`, 'warn');
   }));
 
   unsubscribe.push(session.on("assistant.usage", (event) => {
@@ -158,10 +151,15 @@ const runCopilot = async (agentRequestData: AgentRequestData, signal?: AbortSign
     try {
       const report = await runCopilotOnce(agentRequestData, signal);
 
-      clientLog(`\nTotal usage:`);
-      clientLog(`Input tokens: ${usage.inputTokens}`);
-      clientLog(`Output tokens: ${usage.outputTokens}`);
-      clientLog(`Cost: ${usage.cost}\n\n`);
+      clientLog(`Total usage:\n- input tokens: ${usage.inputTokens}\n- output tokens: ${usage.outputTokens}\n- cost: ${usage.cost}`);
+
+      usage = {
+        model: MODEL,
+        reasoningEffort: REASONING_EFFORT,
+        inputTokens: 0,
+        outputTokens: 0,
+        cost: 0
+      }
 
       return report;
     } catch (err) {

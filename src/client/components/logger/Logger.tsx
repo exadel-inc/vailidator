@@ -4,6 +4,8 @@ import { onServerLog, ServerLogEvent } from '../../services/logs';
 interface LogLine {
   level: string;
   text: string;
+  // Whether the line is still being appended to by streaming `delta` events.
+  open: boolean;
 }
 
 // Terminal-style panel that renders the server log stream in real time:
@@ -71,18 +73,43 @@ export function Logger({ isVisible, busy }: { isVisible: boolean; busy: boolean 
 
 function appendEvent(lines: LogLine[], event: ServerLogEvent): LogLine[] {
   if (event.kind === 'log') {
-    return [...lines, { level: event.level, text: event.text }];
+    return [...lines, { level: event.level, text: event.text, open: false }];
   }
 
-  // delta: append to the current line, splitting embedded newlines.
-  const [first, ...rest] = event.text.split('\n');
-  const next = lines.length === 0 ? [{ level: event.level || 'log', text: first }] : [...lines];
-  if (lines.length > 0) {
-    const last = next[next.length - 1];
-    next[next.length - 1] = { ...last, text: last.text + first };
+  // delta: streamed LLM content. Consecutive deltas append to the current open
+  // line, but content must never glue onto a discrete log line, so after a
+  // `log` event it starts on a fresh line. Each newline ends the current line;
+  // empty parts (blank lines) are dropped so no empty lines are produced.
+  if (!event.text) return lines;
+
+  const level = event.level || 'log';
+  const next = [...lines];
+  let cur = next.length - 1;
+
+  const ensureOpen = () => {
+    if (cur < 0 || !next[cur].open) {
+      next.push({ level, text: '', open: true });
+      cur = next.length - 1;
+    }
+  };
+
+  const parts = event.text.split('\n');
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (i < parts.length - 1) {
+      // A newline follows this part: write it to the open line, then close it.
+      if (part.length > 0) {
+        ensureOpen();
+        next[cur] = { ...next[cur], text: next[cur].text + part };
+      }
+      if (cur >= 0) next[cur] = { ...next[cur], open: false };
+    } else if (part.length > 0) {
+      // No trailing newline: keep writing to the open line (the next delta
+      // event may continue it).
+      ensureOpen();
+      next[cur] = { ...next[cur], text: next[cur].text + part };
+    }
   }
-  for (const part of rest) {
-    next.push({ level: event.level || 'log', text: part });
-  }
+
   return next;
 }

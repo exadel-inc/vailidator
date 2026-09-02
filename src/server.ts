@@ -37,7 +37,7 @@ app.post('/audit', async (req, res) => {
   // If the client disconnects (closes/refreshes the page), abort the agent.
   const abortController = new AbortController();
   initStream(res, () => abortController.abort())
-  clientLog(`Received audit request request for page: ${pageUrl}`)
+  clientLog(`Received audit request for page: ${pageUrl}`)
   clientLog(`Markup length: ${markup.length} bytes`)
   clientLog(`Received ${rules.length} rules`)
 
