@@ -14,6 +14,10 @@
   overflow: hidden;
 
   .va-logger-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     padding: 6px 10px;
     background: @bg;
     color: @text-muted;
@@ -21,6 +25,42 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     border-bottom: 1px solid @border-light;
+  }
+
+  .va-logger-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+    color: @primary;
+    white-space: nowrap;
+  }
+
+  .va-logger-dots {
+    display: inline-flex;
+    gap: 3px;
+
+    i {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: @primary;
+      animation: va-dot-blink 1.2s infinite both;
+    }
+
+    i:nth-child(2) { animation-delay: 0.2s; }
+    i:nth-child(3) { animation-delay: 0.4s; }
+  }
+
+  .va-spinner {
+    width: 10px;
+    height: 10px;
+    border: 2px solid @border-light;
+    border-top-color: @primary;
+    border-radius: 50%;
+    animation: va-spin 0.8s linear infinite;
   }
 
   .va-logger-body {
@@ -50,4 +90,13 @@
       color: @secondary;
     }
   }
+}
+
+@keyframes va-dot-blink {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+
+@keyframes va-spin {
+  to { transform: rotate(360deg); }
 }

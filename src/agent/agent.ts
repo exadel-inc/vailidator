@@ -7,7 +7,7 @@ import { clientLog, createDeltaLogger } from '../helpers/stream.js';
 import SYSTEM_PROMPT from './system-prompt.js';
 import type { AgentRequestData } from '../types/agent-request.types.js';
 
-const MODEL = process.env.COPILOT_MODEL || "auto";
+let MODEL = process.env.COPILOT_MODEL || "auto";
 const REASONING_EFFORT = "high"; 
 // How many times to re-run the agent when it returns invalid LLM output
 // (e.g. malformed JSON or a schema mismatch). Default 3 retries.
@@ -33,6 +33,7 @@ const sessionConfig: SessionConfig = {
 }
 
 if (isCustomProvider) {
+  MODEL = process.env.CUSTOM_PROVIDER_MODEL || MODEL;
   const provider: ProviderConfig = {
     baseUrl: process.env.CUSTOM_PROVIDER_BASE_URL || "http://localhost:1234",
     apiKey: process.env.CUSTOM_PROVIDER_API_KEY,
@@ -100,13 +101,6 @@ const runCopilotOnce = async (agentRequestData: AgentRequestData, signal?: Abort
   unsubscribe.push(session.on("assistant.reasoning_delta", (event) => {
     process.stdout.write(event.data.deltaContent);
     logSessionEvent(event.type, () => streamMessageDeltas.push(event.data.deltaContent, 'info'));
-  }));
-
-  unsubscribe.push(session.on("session.skills_loaded", (event) => {
-    logSessionEvent(event.type, () => clientLog('Skills loaded:', 'info'));
-    event.data.skills.forEach((skill: any) => {
-      logSessionEvent(event.type, () => clientLog(`${skill.name}`, 'info'));
-    });
   }));
 
   unsubscribe.push(session.on("skill.invoked", (event) => {

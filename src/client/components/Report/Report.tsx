@@ -1,4 +1,5 @@
 import { useEffect } from 'preact/hooks';
+import { Fragment } from 'preact';
 import type { AuditItem, AuditReport, ValidationRuleResult } from '../../../types/audit-reports.types.js';
 
 interface ReportProps {

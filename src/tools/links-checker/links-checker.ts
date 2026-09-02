@@ -7,11 +7,15 @@ export async function pingUrl(url: string): Promise<boolean> {
   const scheme = getScheme(url);
 
   if (scheme === 'mailto') {
-    return isValidMailto(url);
+    return true //isValidMailto(url);
   }
 
   if (scheme === 'tel') {
-    return isValidTel(url);
+    return true //isValidTel(url);
+  }
+
+  if (url.startsWith('javascript:') || url.startsWith('#')) {
+    return true;
   }
 
   try {

@@ -8,15 +8,26 @@ interface LogLine {
 
 // Terminal-style panel that renders the server log stream in real time:
 // discrete `log` events become lines, `delta` events append to the current line.
-export function Logger({ isVisible }: { isVisible: boolean }) {
+export function Logger({ isVisible, busy }: { isVisible: boolean; busy: boolean }) {
   const [lines, setLines] = useState<LogLine[]>([]);
+  const [llmActive, setLlmActive] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const llmTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const unsubscribe = onServerLog((event) => {
+      if (event.kind === 'delta') {
+        // Token content is streaming in, so the LLM is actively generating.
+        setLlmActive(true);
+        if (llmTimerRef.current !== null) window.clearTimeout(llmTimerRef.current);
+        llmTimerRef.current = window.setTimeout(() => setLlmActive(false), 700);
+      }
       setLines((prev) => appendEvent(prev, event));
     });
-    return unsubscribe;
+    return () => {
+      if (llmTimerRef.current !== null) window.clearTimeout(llmTimerRef.current);
+      unsubscribe();
+    };
   }, []);
 
   // Auto-scroll to the newest line as content streams in.
@@ -27,7 +38,26 @@ export function Logger({ isVisible }: { isVisible: boolean }) {
 
   return (
     <div class="va-logger" style={{ display: isVisible ? 'block' : 'none' }}>
-      <div class="va-logger-header">Audit Log</div>
+      <div class="va-logger-header">
+        <span>Audit Log</span>
+        <span class="va-logger-status">
+          {llmActive ? (
+            <>
+              <span class="va-logger-dots">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span>LLM is working</span>
+            </>
+          ) : busy ? (
+            <>
+              <span class="va-spinner" />
+              <span>Audit in progress</span>
+            </>
+          ) : null}
+        </span>
+      </div>
       <div class="va-logger-body" ref={bodyRef}>
         {lines.map((line, i) => (
           <div key={i} class={`va-logger-line va-logger-line--${line.level}`}>

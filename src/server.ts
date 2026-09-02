@@ -44,7 +44,7 @@ app.post('/audit', async (req, res) => {
   const stringRules = rules as string[];
 
   try {
-    clientLog(`Analyzing with LLM...`)
+    clientLog(`Analyzing with LLM using model ${process.env.COPILOT_MODEL || process.env.CUSTOM_PROVIDER_MODEL || "auto"}...`)
     const AgentRequestData: AgentRequestData = {
       markup,
       rules: stringRules,
@@ -54,7 +54,7 @@ app.post('/audit', async (req, res) => {
     const agentResponse = await runCopilot(AgentRequestData, abortController.signal);
 
     clientLog(`LLM analysis finished.`);
-    clientLog(`Sending report to client...`)
+    clientLog(`Sending report to the client.`)
 
     endStream(agentResponse)
     clientLog(`Done.`)

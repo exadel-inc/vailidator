@@ -37,6 +37,7 @@ export function App() {
     }
 
     setAuditing(true);
+    setLogVisible(true);
     try {
       console.log('[AEM Audit] Running audit...');
       const result = await runAudit(markup, rules, pageUrl);
@@ -79,7 +80,7 @@ export function App() {
       />
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
       {report && reportOpen && <Report report={report} onClose={() => setReportOpen(false)} />}
-      <Logger isVisible={logVisible} />
+      <Logger isVisible={logVisible} busy={auditing} />
     </>
   );
 }
